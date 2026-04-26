@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AyurVaidya — CAPEX Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+/* ── Reset & base ─────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #f2f5f2;
+  --surface:    #ffffff;
+  --card:       #ffffff;
+  --border:     #dce8de;
+  --border-mid: #c6d9c9;
+  --green:      #1A6B3C;
+  --green-l:    #22874d;
+  --green-xl:   #3aa864;
+  --green-dim:  #e6f2eb;
+  --blue:       #185FA5;
+  --blue-l:     #2070bb;
+  --blue-dim:   #e8f1fb;
+  --red:        #B91C1C;
+  --red-dim:    #fef2f2;
+  --amber:      #92400E;
+  --amber-dim:  #fffbeb;
+  --text:       #0d1f12;
+  --text-mid:   #3d6148;
+  --text-dim:   #7a9982;
+  --text-mute:  #a8bfac;
+  --mono:       'DM Mono', monospace;
+  --sans:       'Sora', sans-serif;
+  --serif:      'Playfair Display', serif;
+  --r-sm:       6px;
+  --r-md:       10px;
+  --r-lg:       14px;
+  --r-xl:       18px;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────── */
+.sidebar {
+  width: 200px;
+  min-width: 200px;
+  background: var(--green);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar::after {
+  content: '';
+  position: absolute;
+  bottom: -60px; right: -60px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  pointer-events: none;
+}
+
+.logo-area {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.logo-name {
+  font-family: var(--serif);
+  font-size: 21px;
+  color: #fff;
+  letter-spacing: -0.3px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.logo-sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+.logo-pill {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.5px;
+}
+
+.nav-block { padding: 12px 0 4px; }
+
+.nav-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 0 16px 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+
+.nav-item.active {
+  background: rgba(255,255,255,0.13);
+  color: #fff;
+  border-left-color: rgba(255,255,255,0.7);
+  font-weight: 500;
+}
+
+.nav-icon {
+  width: 26px; height: 26px;
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  background: rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+.nav-item.active .nav-icon { background: rgba(255,255,255,0.15); }
+
+.nav-chip {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: rgba(220,38,38,0.25);
+  color: #fca5a5;
+  border: 1px solid rgba(220,38,38,0.25);
+}
+.nav-chip.amber { background: rgba(245,158,11,0.2); color: #fcd34d; border-color: rgba(245,158,11,0.25); }
+
+.sidebar-user {
+  margin-top: auto;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: #fff;
+  flex-shrink: 0;
+}
+
+.user-info { line-height: 1.3; }
+.user-name { font-size: 11.5px; color: #fff; font-weight: 500; }
+.user-role { font-size: 10px; color: rgba(255,255,255,0.4); }
+
+/* ── Main ────────────────────────────────── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* ── Topbar ──────────────────────────────── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.page-title { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.breadcrumb span { color: var(--text-mid); }
+
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-mid);
+  padding: 4px 10px;
+  background: var(--green-dim);
+  border: 1px solid rgba(26,107,60,0.2);
+  border-radius: 20px;
+}
+
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green-xl);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(58,168,100,0.4); }
+  50%      { box-shadow: 0 0 0 4px rgba(58,168,100,0); }
+}
+
+.date-chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 4px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.icon-btn {
+  width: 32px; height: 32px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-dim);
+  transition: all 0.15s;
+  position: relative;
+}
+.icon-btn:hover { border-color: var(--green); color: var(--green); }
+
+.notif-badge {
+  position: absolute;
+  top: -4px; right: -4px;
+  width: 14px; height: 14px;
+  background: var(--red);
+  border-radius: 50%;
+  font-size: 8px; font-weight: 700;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--surface);
+}
+
+/* ── Tab bar ─────────────────────────────── */
+.tab-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 22px;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.tab {
+  padding: 10px 20px;
+  font-size: 12.5px;
+  font-weight: 400;
+  cursor: pointer;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text-mid); }
+.tab.active { color: var(--green); border-bottom-color: var(--green); font-weight: 500; }
+
+/* ── Content area ─────────────────────────── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px 24px;
+}
+
+.content::-webkit-scrollbar { width: 4px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+.content::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+/* ── Section header ──────────────────────── */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.capex-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid rgba(24,95,165,0.2);
+  letter-spacing: 0.4px;
+}
+
+.section-title { font-size: 13px; font-weight: 500; color: var(--text); }
+.section-sub   { font-size: 11px; color: var(--text-mute); margin-left: auto; }
+
+/* ── Grid layouts ─────────────────────────── */
+.grid { display: grid; gap: 12px; margin-bottom: 12px; }
+.g-3 { grid-template-columns: repeat(3, 1fr); }
+.g-2-1 { grid-template-columns: 1.45fr 1fr; }
+.g-1 { grid-template-columns: 1fr; }
+
+/* ── Card ─────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.35s ease both;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.card:nth-child(1) { animation-delay: 0.04s; }
+.card:nth-child(2) { animation-delay: 0.08s; }
+.card:nth-child(3) { animation-delay: 0.12s; }
+.card:nth-child(4) { animation-delay: 0.16s; }
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-title { font-size: 11.5px; font-weight: 500; color: var(--text-mid); letter-spacing: 0.1px; }
+
+.view-link {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--blue-l);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+  text-decoration: none;
+}
+.view-link:hover { opacity: 1; text-decoration: underline; }
+
+.card-body {
+  padding: 14px 15px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-foot {
+  padding: 9px 15px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.foot-txt { font-size: 11px; color: var(--text-dim); }
+.foot-txt strong { color: var(--text); font-weight: 500; }
+
+/* ── KPI mini card ────────────────────────── */
+.kpi-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 13px 14px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  animation: slideUp 0.35s ease both;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.kpi-card.g { border-top: none; }
+.kpi-card.g::before { background: var(--green); }
+.kpi-card.b { border-top: none; }
+.kpi-card.b::before { background: var(--blue); }
+.kpi-card.r { border-top: none; }
+.kpi-card.r::before { background: var(--red); }
+
+.kpi-num {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.kpi-num.green { color: var(--green); }
+.kpi-num.blue  { color: var(--blue); }
+.kpi-num.red   { color: var(--red); }
+
+.kpi-lbl { font-size: 11.5px; color: var(--text-mid); }
+.kpi-sub { font-size: 10px; color: var(--text-mute); margin-top: 2px; }
+
+/* ── Donut ────────────────────────────────── */
+.donut-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.leg-block { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-mid);
+}
+
+.leg-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.leg-val { margin-left: auto; font-family: var(--mono); font-weight: 500; color: var(--text); font-size: 13px; }
+.leg-pct { font-size: 10px; color: var(--text-mute); margin-left: 3px; }
+
+/* ── Hbars ────────────────────────────────── */
+.hbar-list { display: flex; flex-direction: column; gap: 9px; }
+.hbar-row  { display: flex; flex-direction: column; gap: 3px; }
+
+.hbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+}
+
+.hbar-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-mid);
+}
+
+.hbar-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.hbar-val { font-family: var(--mono); font-weight: 500; color: var(--text); font-size: 12px; }
+.hbar-track { height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.hbar-fill  { height: 100%; border-radius: 3px; }
+
+.section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+/* ── AMC Table ────────────────────────────── */
+.amc-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+
+.amc-table th {
+  color: var(--text-mute);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 0 0 9px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.amc-table td {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.amc-table tr:last-child td { border-bottom: none; }
+
+.item-name { font-size: 12px; font-weight: 500; color: var(--text); }
+.item-loc  { font-size: 10.5px; color: var(--text-mute); margin-top: 1px; }
+
+.mini-bar-wrap { margin-top: 4px; }
+.mini-bar-track { height: 3px; background: var(--bg); border-radius: 2px; overflow: hidden; width: 70px; }
+.mini-bar-fill  { height: 100%; border-radius: 2px; }
+
+.vendor-txt { font-size: 11.5px; color: var(--text-mid); }
+
+.pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 500;
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+.pill-red   { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(185,28,28,0.15); }
+.pill-amber { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(146,64,14,0.15); }
+.pill-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(26,107,60,0.15); }
+
+/* ── Bar chart area ───────────────────────── */
+.chart-with-summary {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.chart-col { flex: 1; min-width: 0; }
+.chart-legend {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-mid);
+}
+.legend-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 160px;
+}
+
+.summary-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 130px;
+  border-left: 1px solid var(--border);
+  padding-left: 18px;
+  flex-shrink: 0;
+}
+
+.sum-block {}
+.sum-lbl { font-size: 10px; color: var(--text-mute); margin-bottom: 2px; letter-spacing: 0.2px; }
+.sum-num { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--text); line-height: 1; }
+.sum-sub { font-size: 10px; color: var(--green); margin-top: 2px; }
+.sum-num-sm { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="logo-area">
+    <div class="logo-name">AyurVaidya</div>
+    <div class="logo-sub">All India Institute of<br>Ayurveda, Faridabad</div>
+    <div class="logo-pill">AIIA · AYUSH</div>
+  </div>
+
+  <nav>
+    <div class="nav-block">
+      <div class="nav-label">Main</div>
+      <div class="nav-item active">
+        <div class="nav-icon">▦</div> Dashboard
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">☰</div> Item Registry
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">↓</div> Stock Inward
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">↑</div> Stock Issue
+      </div>
+    </div>
+
+    <div class="nav-block">
+      <div class="nav-label">Insights</div>
+      <div class="nav-item">
+        <div class="nav-icon">⚑</div> Alerts
+        <span class="nav-chip">22</span>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">≡</div> Reports
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">✦</div> AI Assistant
+      </div>
+    </div>
+
+    <div class="nav-block">
+      <div class="nav-label">Category</div>
+      <div class="nav-item" style="color:rgba(255,255,255,0.9)">
+        <div class="nav-icon" style="color:#93c5fd">◈</div> CAPEX items
+        <span class="nav-chip amber">3 AMC</span>
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon" style="color:#86efac">◉</div> OPEX items
+        <span class="nav-chip">7</span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-user">
+    <div class="avatar">RK</div>
+    <div class="user-info">
+      <div class="user-name">Ramesh Kumar</div>
+      <div class="user-role">Store Manager</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── Main ───────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="page-title">Dashboard</div>
+      <div class="breadcrumb">
+        / <span>CAPEX assets</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill"><div class="status-dot"></div> System online</div>
+      <div class="date-chip">21 Apr 2025</div>
+      <div class="icon-btn">
+        🔔
+        <div class="notif-badge">7</div>
+      </div>
+      <div class="icon-btn">⚙</div>
+    </div>
+  </header>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <div class="tab">All items</div>
+    <div class="tab active">CAPEX only</div>
+    <div class="tab">OPEX only</div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <div class="section-head">
+      <span class="capex-badge">CAPEX</span>
+      <span class="section-title">Capital assets — devices &amp; electrical</span>
+      <span class="section-sub">Long-life items &nbsp;·&nbsp; AMC tracked &nbsp;·&nbsp; No expiry</span>
+    </div>
+
+    <!-- ── ROW 1: 3 KPI chips ─────────────────────────────────────── -->
+    <div class="grid g-3" style="margin-bottom:12px">
+      <div class="kpi-card g">
+        <div class="kpi-num green">80</div>
+        <div class="kpi-lbl">Total CAPEX items</div>
+        <div class="kpi-sub">registered in system</div>
+      </div>
+      <div class="kpi-card b">
+        <div class="kpi-num blue">48</div>
+        <div class="kpi-lbl">Medical devices</div>
+        <div class="kpi-sub">BP monitors, thermometers…</div>
+      </div>
+      <div class="kpi-card r">
+        <div class="kpi-num red">3</div>
+        <div class="kpi-lbl">AMC renewals due</div>
+        <div class="kpi-sub">within 60 days — action needed</div>
+      </div>
+    </div>
+
+    <!-- ── ROW 2: Breakdown + AMC table ──────────────────────────── -->
+    <div class="grid g-2-1" style="margin-bottom:12px">
+
+      <!-- Asset breakdown card -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Asset breakdown</span>
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="display:flex;gap:12px">
+              <div class="legend-item">
+                <div class="legend-sq" style="background:var(--blue)"></div>
+                Medical device
+              </div>
+              <div class="legend-item">
+                <div class="legend-sq" style="background:var(--green)"></div>
+                Electrical
+              </div>
+            </div>
+            <a class="view-link">View all →</a>
+          </div>
+        </div>
+        <div class="card-body" style="flex-direction:row;gap:20px;align-items:center">
+
+          <!-- Donut -->
+          <div style="flex-shrink:0">
+            <div class="donut-row">
+              <svg width="96" height="96" viewBox="0 0 96 96">
+                <circle cx="48" cy="48" r="36" fill="none" stroke="#e8eee9" stroke-width="13"/>
+                <!-- devices 60% → 135.7 of 226.2 -->
+                <circle cx="48" cy="48" r="36" fill="none" stroke="#185FA5" stroke-width="13"
+                  stroke-dasharray="135.7 90.5" stroke-dashoffset="56.6"/>
+                <!-- electrical 40% → 90.5 -->
+                <circle cx="48" cy="48" r="36" fill="none" stroke="#1A6B3C" stroke-width="13"
+                  stroke-dasharray="90.5 135.7" stroke-dashoffset="-79.1"/>
+                <text x="48" y="44" text-anchor="middle" font-size="17" font-weight="500"
+                  fill="#0d1f12" font-family="'DM Mono',monospace">80</text>
+                <text x="48" y="57" text-anchor="middle" font-size="9"
+                  fill="#7a9982" font-family="'Sora',sans-serif">total</text>
+              </svg>
+              <div class="leg-block">
+                <div class="leg-item">
+                  <div class="leg-sq" style="background:#185FA5"></div>
+                  Medical devices
+                  <span class="leg-val">48<span class="leg-pct">60%</span></span>
+                </div>
+                <div class="leg-item">
+                  <div class="leg-sq" style="background:#1A6B3C"></div>
+                  Electrical
+                  <span class="leg-val">32<span class="leg-pct">40%</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vertical divider -->
+          <div style="width:1px;background:var(--border);align-self:stretch;flex-shrink:0"></div>
+
+          <!-- Hbars -->
+          <div style="flex:1">
+            <div class="hbar-list">
+              <!-- Blue = devices -->
+              <div class="hbar-row">
+                <div class="hbar-top">
+                  <span class="hbar-name"><span class="hbar-dot" style="background:var(--blue)"></span>BP monitors &amp; diagnostics</span>
+                  <span class="hbar-val">18</span>
+                </div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:38%;background:var(--blue)"></div></div>
+              </div>
+              <div class="hbar-row">
+                <div class="hbar-top">
+                  <span class="hbar-name"><span class="hbar-dot" style="background:var(--blue)"></span>Weighing &amp; measuring</span>
+                  <span class="hbar-val">10</span>
+                </div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:21%;background:var(--blue)"></div></div>
+              </div>
+              <div class="hbar-row">
+                <div class="hbar-top">
+                  <span class="hbar-name"><span class="hbar-dot" style="background:var(--blue)"></span>Other devices</span>
+                  <span class="hbar-val">20</span>
+                </div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:42%;background:var(--blue)"></div></div>
+              </div>
+
+              <div class="section-divider"></div>
+
+              <!-- Green = electrical -->
+              <div class="hbar-row">
+                <div class="hbar-top">
+                  <span class="hbar-name"><span class="hbar-dot" style="background:var(--green)"></span>Ceiling fans</span>
+                  <span class="hbar-val">20</span>
+                </div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:42%;background:var(--green)"></div></div>
+              </div>
+              <div class="hbar-row">
+                <div class="hbar-top">
+                  <span class="hbar-name"><span class="hbar-dot" style="background:var(--green)"></span>Air conditioners</span>
+                  <span class="hbar-val">12</span>
+                </div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:25%;background:var(--green)"></div></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- AMC renewals card -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">AMC renewals due</span>
+          <a class="view-link">View report →</a>
+        </div>
+        <div class="card-body">
+          <table class="amc-table">
+            <thead>
+              <tr>
+                <th>Item &amp; location</th>
+                <th>Vendor</th>
+                <th style="text-align:right">Due in</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="item-name">AC Unit</div>
+                  <div class="item-loc">OPD Room 3</div>
+                  <div class="mini-bar-wrap">
+                    <div class="mini-bar-track">
+                      <div class="mini-bar-fill" style="width:42%;background:#E24B4A"></div>
+                    </div>
+                  </div>
+                </td>
+                <td><div class="vendor-txt">Cool Air Services</div></td>
+                <td style="text-align:right"><span class="pill pill-red">38 days</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="item-name">BP Monitor</div>
+                  <div class="item-loc">Ward B</div>
+                  <div class="mini-bar-wrap">
+                    <div class="mini-bar-track">
+                      <div class="mini-bar-fill" style="width:58%;background:#EF9F27"></div>
+                    </div>
+                  </div>
+                </td>
+                <td><div class="vendor-txt">MedEquip Co.</div></td>
+                <td style="text-align:right"><span class="pill pill-amber">52 days</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="item-name">Water Purifier</div>
+                  <div class="item-loc">Pharmacy</div>
+                  <div class="mini-bar-wrap">
+                    <div class="mini-bar-track">
+                      <div class="mini-bar-fill" style="width:64%;background:#EF9F27"></div>
+                    </div>
+                  </div>
+                </td>
+                <td><div class="vendor-txt">AquaCare Ltd.</div></td>
+                <td style="text-align:right"><span class="pill pill-amber">58 days</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="item-name">Geyser</div>
+                  <div class="item-loc">IPD Ward A</div>
+                  <div class="mini-bar-wrap">
+                    <div class="mini-bar-track">
+                      <div class="mini-bar-fill" style="width:100%;background:var(--green)"></div>
+                    </div>
+                  </div>
+                </td>
+                <td><div class="vendor-txt">HeatPro Services</div></td>
+                <td style="text-align:right"><span class="pill pill-green">90 days</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-foot">
+          <span class="foot-txt">Total AMC contracts &nbsp;<strong>18</strong></span>
+          <span class="foot-txt" style="color:var(--red)">Already expired &nbsp;<strong>1</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ROW 3: Stacked bar chart ───────────────────────────────── -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">New CAPEX items added — last 6 months</span>
+        <a class="view-link">View GRN report →</a>
+      </div>
+      <div class="card-body">
+        <div class="chart-with-summary">
+          <div class="chart-col">
+            <div class="chart-legend">
+              <div class="legend-item">
+                <div class="legend-sq" style="background:var(--blue)"></div>
+                Medical devices
+              </div>
+              <div class="legend-item">
+                <div class="legend-sq" style="background:var(--green)"></div>
+                Electrical
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="capexChart"
+                role="img"
+                aria-label="Stacked bar chart: monthly CAPEX additions split by Medical Devices and Electrical items, Nov through Apr">
+                Monthly CAPEX additions Nov–Apr: Nov 3, Dec 5, Jan 4, Feb 6, Mar 4, Apr 4.
+              </canvas>
+            </div>
+          </div>
+
+          <div class="summary-col">
+            <div class="sum-block">
+              <div class="sum-lbl">Total this year</div>
+              <div class="sum-num">26</div>
+              <div class="sum-sub">↑ 18% vs last year</div>
+            </div>
+            <div style="height:1px;background:var(--border)"></div>
+            <div class="sum-block">
+              <div class="sum-lbl">Peak month</div>
+              <div class="sum-num-sm">Feb &nbsp;<span style="color:var(--green)">6 items</span></div>
+            </div>
+            <div style="height:1px;background:var(--border)"></div>
+            <div class="sum-block">
+              <div class="sum-lbl">Devices added</div>
+              <div class="sum-num-sm" style="color:var(--blue)">16 items</div>
+            </div>
+            <div style="height:1px;background:var(--border)"></div>
+            <div class="sum-block">
+              <div class="sum-lbl">Electrical added</div>
+              <div class="sum-num-sm" style="color:var(--green)">10 items</div>
+            </div>
+            <div style="height:1px;background:var(--border)"></div>
+            <div class="sum-block">
+              <div class="sum-lbl">Monthly average</div>
+              <div class="sum-num-sm">4.3 items</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+new Chart(document.getElementById('capexChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Nov','Dec','Jan','Feb','Mar','Apr'],
+    datasets: [
+      {
+        label: 'Medical devices',
+        data: [2,3,2,4,2,3],
+        backgroundColor: '#185FA5',
+        borderRadius: { topLeft:3, topRight:3, bottomLeft:0, bottomRight:0 },
+        borderSkipped: false,
+        barPercentage: 0.55,
+        categoryPercentage: 0.7,
+      },
+      {
+        label: 'Electrical',
+        data: [1,2,2,2,2,1],
+        backgroundColor: '#1A6B3C',
+        borderRadius: { topLeft:3, topRight:3, bottomLeft:0, bottomRight:0 },
+        borderSkipped: false,
+        barPercentage: 0.55,
+        categoryPercentage: 0.7,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#ffffff',
+        borderColor: '#dce8de',
+        borderWidth: 1,
+        titleColor: '#0d1f12',
+        bodyColor: '#3d6148',
+        padding: 10,
+        cornerRadius: 8,
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} items`
+        }
+      }
+    },
+    scales: {
+      x: {
+        stacked: true,
+        grid: { display: false },
+        border: { display: false },
+        ticks: { color: '#7a9982', font: { size: 11, family: "'Sora',sans-serif" } }
+      },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        max: 8,
+        grid: { color: '#dce8de', lineWidth: 0.5 },
+        border: { display: false },
+        ticks: {
+          color: '#7a9982',
+          font: { size: 10, family: "'DM Mono',monospace" },
+          stepSize: 2,
+          callback: v => v
+        }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AyurVaidya — OPEX Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f5f2;--surface:#fff;--card:#fff;--border:#dce8de;--border-mid:#c6d9c9;
+  --green:#1A6B3C;--green-l:#22874d;--green-xl:#3aa864;--green-dim:#e6f2eb;
+  --blue:#185FA5;--blue-dim:#e8f1fb;
+  --red:#B91C1C;--red-dim:#fef2f2;
+  --amber:#92400E;--amber-dim:#fffbeb;
+  --yellow:#78600A;--yellow-dim:#fefce8;
+  --slate:#3d5a6c;--slate-dim:#eef4f8;
+  --text:#0d1f12;--text-mid:#3d6148;--text-dim:#7a9982;--text-mute:#a8bfac;
+  --mono:'DM Mono',monospace;--sans:'Sora',sans-serif;--serif:'Playfair Display',serif;
+  --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:200px;min-width:200px;background:var(--green);display:flex;flex-direction:column;height:100vh;overflow:hidden;position:relative}
+.sidebar::after{content:'';position:absolute;bottom:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.04);pointer-events:none}
+.logo-area{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,0.12)}
+.logo-name{font-family:var(--serif);font-size:21px;color:#fff;letter-spacing:-0.3px;line-height:1;margin-bottom:4px}
+.logo-sub{font-size:10px;color:rgba(255,255,255,0.45);line-height:1.5;font-weight:300}
+.logo-pill{display:inline-block;margin-top:8px;padding:2px 8px;border:1px solid rgba(255,255,255,0.2);border-radius:20px;font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.55);letter-spacing:0.5px}
+.nav-block{padding:12px 0 4px}
+.nav-label{font-size:9px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:1.2px;text-transform:uppercase;padding:0 16px 6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;font-size:12.5px;color:rgba(255,255,255,0.6);cursor:pointer;border-left:2px solid transparent;transition:all 0.15s}
+.nav-item:hover{background:rgba(255,255,255,0.07);color:#fff}
+.nav-item.active{background:rgba(255,255,255,0.13);color:#fff;border-left-color:rgba(255,255,255,0.7);font-weight:500}
+.nav-icon{width:26px;height:26px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(255,255,255,0.07);flex-shrink:0}
+.nav-item.active .nav-icon{background:rgba(255,255,255,0.15)}
+.nav-chip{margin-left:auto;font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:20px;background:rgba(220,38,38,0.25);color:#fca5a5;border:1px solid rgba(220,38,38,0.25)}
+.nav-chip.amber{background:rgba(245,158,11,0.2);color:#fcd34d;border-color:rgba(245,158,11,0.25)}
+.sidebar-user{margin-top:auto;padding:14px 16px;border-top:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;gap:10px}
+.avatar{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0}
+.user-name{font-size:11.5px;color:#fff;font-weight:500}
+.user-role{font-size:10px;color:rgba(255,255,255,0.4)}
+
+/* Main layout */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:14px}
+.page-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.2px}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)}
+.breadcrumb span{color:var(--text-mid)}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.status-pill{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-mid);padding:4px 10px;background:var(--green-dim);border:1px solid rgba(26,107,60,0.2);border-radius:20px}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green-xl);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(58,168,100,0.4)}50%{box-shadow:0 0 0 4px rgba(58,168,100,0)}}
+.date-chip{font-family:var(--mono);font-size:11px;color:var(--text-dim);padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm)}
+.icon-btn{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text-dim);transition:all 0.15s;position:relative}
+.icon-btn:hover{border-color:var(--green);color:var(--green)}
+.notif-badge{position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:var(--red);border-radius:50%;font-size:8px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface)}
+.tab-bar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 22px;flex-shrink:0}
+.tab{padding:10px 20px;font-size:12.5px;cursor:pointer;color:var(--text-dim);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s}
+.tab:hover{color:var(--text-mid)}
+.tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:500}
+.content{flex:1;overflow-y:auto;padding:18px 22px 24px}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px}
+
+/* Section head */
+.section-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.opex-badge{font-family:var(--mono);font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;background:var(--green-dim);color:var(--green);border:1px solid rgba(26,107,60,0.2);letter-spacing:0.4px}
+.section-title{font-size:13px;font-weight:500;color:var(--text)}
+.section-sub{font-size:11px;color:var(--text-mute);margin-left:auto}
+
+/* Grids */
+.grid{display:grid;gap:12px;margin-bottom:12px}
+.g-2{grid-template-columns:1fr 1fr}
+.g-2-1{grid-template-columns:1.35fr 1fr}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;display:flex;flex-direction:column;animation:slideUp 0.3s ease both}
+@keyframes slideUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.card:nth-child(1){animation-delay:.04s}.card:nth-child(2){animation-delay:.08s}.card:nth-child(3){animation-delay:.12s}.card:nth-child(4){animation-delay:.16s}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;gap:6px}
+.card-title{font-size:11.5px;font-weight:500;color:var(--text-mid);letter-spacing:0.1px}
+.view-link{font-family:var(--mono);font-size:10px;color:var(--blue);cursor:pointer;opacity:0.75}
+.view-link:hover{opacity:1;text-decoration:underline}
+.card-body{padding:14px 15px;flex:1;display:flex;flex-direction:column}
+.card-foot{padding:9px 15px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;flex-wrap:wrap;gap:4px}
+.foot-txt{font-size:11px;color:var(--text-dim)}
+.foot-txt strong{color:var(--text);font-weight:500}
+
+/* KPI chips */
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);padding:13px 14px;display:flex;flex-direction:column;position:relative;overflow:hidden;animation:slideUp 0.3s ease both}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi-card.g::before{background:var(--green)}
+.kpi-card.r::before{background:var(--red)}
+.kpi-card.a::before{background:var(--amber)}
+.kpi-card.n::before{background:var(--border-mid)}
+.kpi-num{font-family:var(--mono);font-size:26px;font-weight:500;line-height:1;margin-bottom:4px}
+.kpi-num.green{color:var(--green)}.kpi-num.red{color:var(--red)}.kpi-num.amber{color:var(--amber)}
+.kpi-lbl{font-size:11.5px;color:var(--text-mid)}
+.kpi-sub{font-size:10px;color:var(--text-mute);margin-top:2px}
+
+/* Donut */
+.donut-row{display:flex;align-items:center;gap:16px}
+.leg-block{display:flex;flex-direction:column;gap:9px;flex:1}
+.leg-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-mid)}
+.leg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.leg-val{margin-left:auto;font-family:var(--mono);font-weight:500;color:var(--text);font-size:13px}
+.leg-pct{font-size:10px;color:var(--text-mute);margin-left:3px}
+
+/* Stock bars */
+.stock-list{display:flex;flex-direction:column;gap:8px}
+.stock-row{display:flex;flex-direction:column;gap:3px}
+.stock-top{display:flex;align-items:center;font-size:11.5px;gap:4px}
+.stock-name{flex:1;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stock-nums{font-family:var(--mono);color:var(--text-dim);font-size:10px;white-space:nowrap}
+.stock-track{height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.stock-fill{height:100%;border-radius:3px}
+
+/* Pills */
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;font-family:var(--mono);white-space:nowrap}
+.pill-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(185,28,28,0.15)}
+.pill-amber{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(146,64,14,0.15)}
+.pill-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(26,107,60,0.15)}
+
+/* Wastage — NEUTRAL, no red styling */
+.wastage-list{display:flex;flex-direction:column;gap:7px}
+.w-row{display:flex;flex-direction:column;gap:3px}
+.w-top{display:flex;align-items:center;gap:6px;font-size:11.5px}
+.w-name{color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w-qty{font-family:var(--mono);color:var(--text-dim);font-size:10px;white-space:nowrap}
+.w-val{font-family:var(--mono);color:var(--text-mid);font-size:11px;font-weight:500;white-space:nowrap}
+.w-track{height:4px;background:var(--bg);border-radius:2px;overflow:hidden}
+.w-fill{height:100%;border-radius:2px;background:var(--slate)}
+
+.sum-pills{display:flex;gap:8px;margin-bottom:12px}
+.s-pill{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-md);padding:9px 10px;text-align:center}
+.s-pill-val{font-family:var(--mono);font-size:16px;font-weight:500;margin-bottom:2px;color:var(--text)}
+.s-pill-lbl{font-size:10px;color:var(--text-dim)}
+
+.month-tabs{display:flex;gap:3px;margin-bottom:10px}
+.mtab{padding:3px 9px;font-family:var(--mono);font-size:10px;border-radius:20px;cursor:pointer;border:1px solid var(--border);color:var(--text-dim);background:transparent;transition:all 0.15s}
+.mtab:hover{color:var(--text-mid)}
+.mtab.active{background:var(--slate-dim);color:var(--slate);border-color:rgba(61,90,108,0.3)}
+
+/* Anomaly chart */
+.product-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.ptab{padding:4px 10px;font-size:11px;border-radius:20px;cursor:pointer;border:1px solid var(--border);color:var(--text-dim);background:transparent;transition:all 0.15s;font-family:var(--mono)}
+.ptab:hover{color:var(--text-mid);border-color:var(--border-mid)}
+
+.aleg{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+.aleg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-mid)}
+.aleg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.aleg-line{width:18px;height:2px;background:var(--green);flex-shrink:0}
+.aleg-dot{width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0}
+
+.chart-wrap{position:relative;width:100%}
+.chart-with-summary{display:flex;gap:18px;align-items:flex-start}
+.chart-col{flex:1;min-width:0}
+.summary-col{display:flex;flex-direction:column;gap:10px;min-width:124px;border-left:1px solid var(--border);padding-left:16px;flex-shrink:0}
+.sum-lbl{font-size:10px;color:var(--text-mute);margin-bottom:2px}
+.sum-num{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--text);line-height:1}
+.sum-num-sm{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text)}
+.vdivider{height:1px;background:var(--border)}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="logo-area">
+    <div class="logo-name">AyurVaidya</div>
+    <div class="logo-sub">All India Institute of<br>Ayurveda, Faridabad</div>
+    <div class="logo-pill">AIIA · AYUSH</div>
+  </div>
+  <nav>
+    <div class="nav-block">
+      <div class="nav-label">Main</div>
+      <div class="nav-item active"><div class="nav-icon">▦</div>Dashboard</div>
+      <div class="nav-item"><div class="nav-icon">☰</div>Item Registry</div>
+      <div class="nav-item"><div class="nav-icon">↓</div>Stock Inward</div>
+      <div class="nav-item"><div class="nav-icon">↑</div>Stock Issue</div>
+    </div>
+    <div class="nav-block">
+      <div class="nav-label">Insights</div>
+      <div class="nav-item"><div class="nav-icon">⚑</div>Alerts<span class="nav-chip">22</span></div>
+      <div class="nav-item"><div class="nav-icon">≡</div>Reports</div>
+      <div class="nav-item"><div class="nav-icon">✦</div>AI Assistant</div>
+    </div>
+    <div class="nav-block">
+      <div class="nav-label">Category</div>
+      <div class="nav-item"><div class="nav-icon" style="color:#93c5fd">◈</div>CAPEX items<span class="nav-chip amber">3 AMC</span></div>
+      <div class="nav-item" style="color:rgba(255,255,255,0.9)"><div class="nav-icon" style="color:#86efac">◉</div>OPEX items<span class="nav-chip">7</span></div>
+    </div>
+  </nav>
+  <div class="sidebar-user">
+    <div class="avatar">RK</div>
+    <div><div class="user-name">Ramesh Kumar</div><div class="user-role">Store Manager</div></div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="page-title">Dashboard</div>
+      <div class="breadcrumb">/ <span>OPEX stock</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill"><div class="status-dot"></div>System online</div>
+      <div class="date-chip">21 Apr 2025</div>
+      <div class="icon-btn">🔔<div class="notif-badge">7</div></div>
+      <div class="icon-btn">⚙</div>
+    </div>
+  </header>
+
+  <div class="tab-bar">
+    <div class="tab">All items</div>
+    <div class="tab">CAPEX only</div>
+    <div class="tab active">OPEX only</div>
+  </div>
+
+  <div class="content">
+    <div class="section-head">
+      <span class="opex-badge">OPEX</span>
+      <span class="section-title">Operating stock — medicines &amp; consumables</span>
+      <span class="section-sub">Regular purchase · Expiry tracked · Stock replenished</span>
+    </div>
+
+    <!-- ROW 1: Donut + 3 KPIs -->
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:12px">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Total OPEX items</span><a class="view-link">View all →</a></div>
+        <div class="card-body" style="justify-content:center;padding:12px 14px">
+          <div class="donut-row">
+            <svg width="80" height="80" viewBox="0 0 80 80" style="flex-shrink:0">
+              <circle cx="40" cy="40" r="29" fill="none" stroke="#e8eee9" stroke-width="11"/>
+              <circle cx="40" cy="40" r="29" fill="none" stroke="#1A6B3C" stroke-width="11"
+                stroke-dasharray="153.9 28.3" stroke-dashoffset="45.6"/>
+              <circle cx="40" cy="40" r="29" fill="none" stroke="#185FA5" stroke-width="11"
+                stroke-dasharray="28.3 153.9" stroke-dashoffset="-108.3"/>
+              <text x="40" y="36" text-anchor="middle" font-size="14" font-weight="500"
+                fill="#0d1f12" font-family="'DM Mono',monospace">168</text>
+              <text x="40" y="48" text-anchor="middle" font-size="8"
+                fill="#7a9982" font-family="'Sora',sans-serif">total</text>
+            </svg>
+            <div class="leg-block">
+              <div class="leg-item"><div class="leg-sq" style="background:#1A6B3C"></div>Medicines<span class="leg-val">142<span class="leg-pct">85%</span></span></div>
+              <div class="leg-item"><div class="leg-sq" style="background:#185FA5"></div>Consumables<span class="leg-val">26<span class="leg-pct">15%</span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card r" style="animation-delay:.06s">
+        <div class="kpi-num red">7</div>
+        <div class="kpi-lbl">Expiring in 30 days</div>
+        <div class="kpi-sub">urgent action needed</div>
+      </div>
+      <div class="kpi-card a" style="animation-delay:.10s">
+        <div class="kpi-num amber">12</div>
+        <div class="kpi-lbl">Low stock items</div>
+        <div class="kpi-sub">below minimum level</div>
+      </div>
+      <div class="kpi-card n" style="animation-delay:.14s">
+        <div class="kpi-num" style="color:var(--text)">23</div>
+        <div class="kpi-lbl">GRN this month</div>
+        <div class="kpi-sub">61 issues this month</div>
+      </div>
+    </div>
+
+    <!-- ROW 2: Expiry pipeline + Low stock -->
+    <div class="grid g-2" style="margin-bottom:12px">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Expiry pipeline</span>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="aleg">
+              <div class="aleg-item"><div class="aleg-sq" style="background:#B91C1C"></div>Critical &lt;30d</div>
+              <div class="aleg-item"><div class="aleg-sq" style="background:#92400E"></div>Urgent &lt;60d</div>
+              <div class="aleg-item"><div class="aleg-sq" style="background:#78600A"></div>Monitor &lt;90d</div>
+              <div class="aleg-item"><div class="aleg-sq" style="background:#1A6B3C"></div>Healthy</div>
+            </div>
+            <a class="view-link">View all →</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="chart-with-summary">
+            <div class="chart-col">
+              <div class="chart-wrap" style="height:155px"><canvas id="expiryChart"></canvas></div>
+            </div>
+            <div class="summary-col">
+              <div><div class="sum-lbl">Total items</div><div class="sum-num">168</div></div>
+              <div class="vdivider"></div>
+              <div><div class="sum-lbl">Already expired</div><div class="sum-num-sm" style="color:var(--red)">2 items</div></div>
+              <div class="vdivider"></div>
+              <div><div class="sum-lbl">Critical this month</div><div class="sum-num-sm" style="color:var(--amber)">7 items</div></div>
+              <div class="vdivider"></div>
+              <div><div class="sum-lbl">Healthy</div><div class="sum-num-sm" style="color:var(--green)">126 items</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card-foot">
+          <span class="foot-txt">Expiring &lt;30d &nbsp;<strong style="color:var(--red)">7</strong></span>
+          <span class="foot-txt">Expiring &lt;60d &nbsp;<strong style="color:var(--amber)">14</strong></span>
+          <span class="foot-txt">Expiring &lt;90d &nbsp;<strong style="color:var(--yellow)">21</strong></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Low stock — needs reorder</span><a class="view-link">View all →</a></div>
+        <div class="card-body" style="justify-content:center">
+          <div class="stock-list">
+            <div class="stock-row">
+              <div class="stock-top"><span class="stock-name">Cotton Bandages</span><span class="stock-nums">210/1,000 rolls</span><span class="pill pill-red" style="margin-left:6px">Critical</span></div>
+              <div class="stock-track"><div class="stock-fill" style="width:21%;background:var(--red)"></div></div>
+            </div>
+            <div class="stock-row">
+              <div class="stock-top"><span class="stock-name">Surgical Gloves (M)</span><span class="stock-nums">30/200 pairs</span><span class="pill pill-red" style="margin-left:6px">Critical</span></div>
+              <div class="stock-track"><div class="stock-fill" style="width:15%;background:var(--red)"></div></div>
+            </div>
+            <div class="stock-row">
+              <div class="stock-top"><span class="stock-name">Triphala Churna</span><span class="stock-nums">480/2,000 g</span><span class="pill pill-amber" style="margin-left:6px">Low</span></div>
+              <div class="stock-track"><div class="stock-fill" style="width:24%;background:var(--amber)"></div></div>
+            </div>
+            <div class="stock-row">
+              <div class="stock-top"><span class="stock-name">Neem Tail</span><span class="stock-nums">320/500 ml</span><span class="pill pill-amber" style="margin-left:6px">Low</span></div>
+              <div class="stock-track"><div class="stock-fill" style="width:64%;background:var(--amber)"></div></div>
+            </div>
+            <div class="stock-row">
+              <div class="stock-top"><span class="stock-name">Brahmi Tail</span><span class="stock-nums">380/1,000 ml</span><span class="pill pill-amber" style="margin-left:6px">Low</span></div>
+              <div class="stock-track"><div class="stock-fill" style="width:38%;background:var(--amber)"></div></div>
+            </div>
+            <div class="stock-row">
+              <div class="stock-top"><span class="stock-name">Ashwagandha Churna</span><span class="stock-nums">4,200/1,000 g</span><span class="pill pill-green" style="margin-left:6px">Healthy</span></div>
+              <div class="stock-track"><div class="stock-fill" style="width:100%;background:var(--green)"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card-foot">
+          <span class="foot-txt">Critical &nbsp;<strong style="color:var(--red)">2</strong></span>
+          <span class="foot-txt">Low &nbsp;<strong style="color:var(--amber)">3</strong></span>
+          <span class="foot-txt">Healthy &nbsp;<strong style="color:var(--green)">1</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 3: Anomaly tracker + Wastage -->
+    <div class="grid g-2-1" style="margin-bottom:0">
+
+      <!-- Consumption anomaly chart -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Consumption anomaly tracker — top 5 products (last 6 months)</span>
+          <a class="view-link">View report →</a>
+        </div>
+        <div class="card-body" style="padding:12px 15px 10px">
+          <div class="product-tabs" id="productTabs"></div>
+          <div class="aleg">
+            <div class="aleg-item"><div class="aleg-sq" style="background:#185FA5;opacity:0.65"></div>Monthly usage</div>
+            <div class="aleg-item"><div class="aleg-line"></div>6-month avg</div>
+            <div class="aleg-item"><div class="aleg-dot"></div>Anomaly spike</div>
+          </div>
+          <div class="chart-wrap" style="height:165px"><canvas id="anomalyChart"></canvas></div>
+          <div id="anomalyNote" style="margin-top:8px;padding:7px 10px;border-radius:var(--r-md);font-size:11px;display:none"></div>
+        </div>
+        <div class="card-foot">
+          <span class="foot-txt" id="footLeft"></span>
+          <span class="foot-txt" id="footRight"></span>
+        </div>
+      </div>
+
+      <!-- Wastage — fully neutral, red only on YTD increase -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Stock wastage — expiry</span>
+          <a class="view-link">View report →</a>
+        </div>
+        <div class="card-body" style="padding:12px 14px">
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px">Items expired before use — Mar 2025</div>
+          <div class="sum-pills">
+            <div class="s-pill"><div class="s-pill-val">5</div><div class="s-pill-lbl">items expired</div></div>
+            <div class="s-pill"><div class="s-pill-val">₹4,820</div><div class="s-pill-lbl">value written off</div></div>
+          </div>
+          <div class="month-tabs">
+            <div class="mtab" onclick="switchMTab(this)">Jan</div>
+            <div class="mtab" onclick="switchMTab(this)">Feb</div>
+            <div class="mtab active" onclick="switchMTab(this)">Mar</div>
+            <div class="mtab" onclick="switchMTab(this)">Apr</div>
+          </div>
+          <div class="wastage-list">
+            <div class="w-row">
+              <div class="w-top"><span class="w-name">Haritaki Churna</span><span class="w-qty">1.6 kg</span><span class="w-val">₹1,920</span></div>
+              <div class="w-track"><div class="w-fill" style="width:85%"></div></div>
+            </div>
+            <div class="w-row">
+              <div class="w-top"><span class="w-name">Neem Tail</span><span class="w-qty">280 ml</span><span class="w-val">₹980</span></div>
+              <div class="w-track"><div class="w-fill" style="width:45%"></div></div>
+            </div>
+            <div class="w-row">
+              <div class="w-top"><span class="w-name">Chyawanprash</span><span class="w-qty">400 g</span><span class="w-val">₹840</span></div>
+              <div class="w-track"><div class="w-fill" style="width:38%"></div></div>
+            </div>
+            <div class="w-row">
+              <div class="w-top"><span class="w-name">Surgical Gloves</span><span class="w-qty">18 pairs</span><span class="w-val">₹720</span></div>
+              <div class="w-track"><div class="w-fill" style="width:32%"></div></div>
+            </div>
+            <div class="w-row">
+              <div class="w-top"><span class="w-name">Brahmi Tail</span><span class="w-qty">120 ml</span><span class="w-val">₹360</span></div>
+              <div class="w-track"><div class="w-fill" style="width:16%"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card-foot">
+          <!-- Neutral for amounts, RED only for YTD increase -->
+          <span class="foot-txt">YTD wastage &nbsp;<strong>₹18,640</strong></span>
+          <span class="foot-txt" style="color:var(--red)">↑ 12% vs last year</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+Chart.defaults.font.family="'Sora',sans-serif";
+const TT={backgroundColor:'#fff',borderColor:'#dce8de',borderWidth:1,titleColor:'#0d1f12',bodyColor:'#3d6148',padding:10,cornerRadius:8};
+const MONTHS=['Nov','Dec','Jan','Feb','Mar','Apr'];
+const FACTOR=1.5;
+
+/* Expiry bar chart */
+new Chart(document.getElementById('expiryChart'),{
+  type:'bar',
+  data:{
+    labels:['< 30 days','< 60 days','< 90 days','> 90 days'],
+    datasets:[{data:[7,14,21,126],backgroundColor:['#B91C1C','#92400E','#78600A','#1A6B3C'],
+      borderRadius:{topLeft:4,topRight:4,bottomLeft:0,bottomRight:0},borderSkipped:false,barPercentage:0.6,categoryPercentage:0.7}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>` ${ctx.parsed.y} items`}}},
+    scales:{
+      x:{grid:{display:false},border:{display:false},ticks:{color:'#7a9982',font:{size:10.5}}},
+      y:{beginAtZero:true,grid:{color:'#dce8de',lineWidth:0.5},border:{display:false},ticks:{color:'#7a9982',font:{size:10,family:"'DM Mono',monospace"}}}
+    }
+  }
+});
+
+/* Products data — include intentional anomaly spikes */
+const PRODUCTS=[
+  {name:'Ashwagandha',fullName:'Ashwagandha Churna',color:'#185FA5',
+   data:[820,950,880,1820,900,970],unit:'g',
+   note:'Feb usage (1,820g) was 2× the avg (902g). Possible bulk dispensing or data entry error — verify with Pharmacy.'},
+  {name:'Brahmi Tail',fullName:'Brahmi Tail',color:'#1A6B3C',
+   data:[320,290,350,410,700,360],unit:'ml',
+   note:'Mar usage (700ml) was 1.8× the avg (405ml). Spike may be linked to Panchakarma season — confirm with department.'},
+  {name:'Triphala',fullName:'Triphala Churna',color:'#92400E',
+   data:[210,240,190,260,220,250],unit:'g',note:null},
+  {name:'Neem Tail',fullName:'Neem Tail',color:'#78600A',
+   data:[140,160,120,180,150,130],unit:'ml',note:null},
+  {name:'Haritaki',fullName:'Haritaki Churna',color:'#3d5a6c',
+   data:[95,110,80,130,340,90],unit:'g',
+   note:'Mar usage (340g) was 2.6× the avg (141g). Unexpectedly high — check if stock was bulk issued or misrecorded.'},
+];
+
+function avg(arr){return Math.round(arr.reduce((a,b)=>a+b,0)/arr.length)}
+function isAnomaly(v,a){return v>a*FACTOR}
+
+let chartInst=null;
+
+function renderChart(idx){
+  const p=PRODUCTS[idx];
+  const a=avg(p.data);
+
+  // Note
+  const noteEl=document.getElementById('anomalyNote');
+  if(p.note){
+    noteEl.style.display='block';
+    noteEl.style.cssText+='background:#fef9ec;border:1px solid rgba(146,64,14,0.2);color:#5c3a00;border-radius:var(--r-md);padding:7px 10px;font-size:11px;margin-top:8px';
+    noteEl.innerHTML=`<strong>⚠ Anomaly detected:</strong> ${p.note}`;
+  } else {
+    noteEl.style.display='block';
+    noteEl.style.cssText+='background:#e6f2eb;border:1px solid rgba(26,107,60,0.2);color:#1A6B3C;border-radius:var(--r-md);padding:7px 10px;font-size:11px;margin-top:8px';
+    noteEl.innerHTML=`<strong>✓ No anomalies</strong> — consumption within normal range all 6 months.`;
+  }
+
+  document.getElementById('footLeft').innerHTML=`6-month avg &nbsp;<strong>${a} ${p.unit}/month</strong>`;
+  document.getElementById('footRight').innerHTML=p.note
+    ?`<span style="color:var(--red)">⚠ Spike detected — action needed</span>`
+    :`<span style="color:var(--green)">✓ Normal consumption pattern</span>`;
+
+  if(chartInst) chartInst.destroy();
+
+  chartInst=new Chart(document.getElementById('anomalyChart'),{
+    type:'bar',
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {
+          label:'Monthly usage',
+          data:p.data,
+          backgroundColor:p.data.map(v=>isAnomaly(v,a)?'rgba(185,28,28,0.7)':`${p.color}99`),
+          borderColor:p.data.map(v=>isAnomaly(v,a)?'#B91C1C':p.color),
+          borderWidth:1.5,
+          borderRadius:{topLeft:4,topRight:4,bottomLeft:0,bottomRight:0},
+          borderSkipped:false,
+          barPercentage:0.55,categoryPercentage:0.7,
+          order:2,
+        },
+        {
+          label:'6-month average',
+          data:Array(6).fill(a),
+          type:'line',
+          borderColor:'#1A6B3C',
+          borderWidth:2,
+          borderDash:[5,4],
+          pointRadius:0,pointHoverRadius:0,
+          fill:false,tension:0,
+          order:1,
+        },
+        {
+          label:'Anomaly',
+          data:p.data.map(v=>isAnomaly(v,a)?v:null),
+          type:'scatter',
+          pointBackgroundColor:'#B91C1C',
+          pointBorderColor:'#fff',
+          pointBorderWidth:2,
+          pointRadius:6,pointHoverRadius:8,
+          order:0,
+        }
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{...TT,callbacks:{label:ctx=>{
+          if(ctx.dataset.label==='Anomaly'&&ctx.parsed.y!==null)
+            return ` ⚠ Spike: ${ctx.parsed.y} ${p.unit} (avg: ${a})`;
+          if(ctx.dataset.label==='6-month average')
+            return ` Avg: ${a} ${p.unit}`;
+          return ` Usage: ${ctx.parsed.y} ${p.unit}`;
+        }}}
+      },
+      scales:{
+        x:{grid:{display:false},border:{display:false},ticks:{color:'#7a9982',font:{size:11}}},
+        y:{beginAtZero:false,grid:{color:'#dce8de',lineWidth:0.5},border:{display:false},
+           ticks:{color:'#7a9982',font:{size:10,family:"'DM Mono',monospace"}}}
+      }
+    }
+  });
+}
+
+/* Build product tabs */
+const tabsEl=document.getElementById('productTabs');
+PRODUCTS.forEach((p,i)=>{
+  const t=document.createElement('div');
+  t.className='ptab'+(i===0?' active':'');
+  t.textContent=p.name;
+  if(i===0){t.style.background=p.color;t.style.color='#fff'}
+  t.onclick=()=>{
+    document.querySelectorAll('.ptab').forEach(x=>{x.classList.remove('active');x.style.background='transparent';x.style.color='var(--text-dim)'});
+    t.classList.add('active');t.style.background=p.color;t.style.color='#fff';
+    renderChart(i);
+  };
+  tabsEl.appendChild(t);
+});
+
+renderChart(0);
+
+function switchMTab(el){
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>
