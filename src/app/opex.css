@@ -155,3 +155,42 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .sum-num{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--text);line-height:1}
 .sum-num-sm{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text)}
 .vdivider{height:1px;background:var(--border)}
+
+/* Responsive tweaks */
+@media (max-width:1200px){
+  .g-2-1{grid-template-columns:1fr}
+  .g-2{grid-template-columns:1fr}
+  .chart-with-summary{gap:12px}
+  .summary-col{min-width:0;border-left:none;border-top:1px solid var(--border);padding-left:0;padding-top:12px}
+  .sidebar{width:160px;min-width:160px}
+}
+
+@media (max-width:900px){
+  /* Collapse sidebar on small screens to give main content full width */
+  .sidebar{display:none}
+  body{overflow:auto}
+  .main{height:auto}
+  .topbar{padding:0 12px}
+  .content{padding:14px}
+  .card-head{padding:10px}
+  /* Make charts stack vertically */
+  .chart-with-summary{flex-direction:column}
+  .summary-col{border-left:none;border-top:1px solid var(--border);padding-left:0;padding-top:12px}
+  /* Make product tabs horizontally scrollable */
+  .product-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px}
+  .product-tabs::-webkit-scrollbar{height:6px}
+  .ptab{flex:0 0 auto}
+  .chart-wrap canvas{max-width:100% !important;height:auto !important}
+}
+
+@media (max-width:480px){
+  .page-title{font-size:14px}
+  .tab{padding:8px 12px;font-size:12px}
+  .kpi-num{font-size:20px}
+  .kpi-card{padding:10px}
+  .sum-pills{flex-direction:column}
+  .s-pill{padding:8px}
+  .card-body{padding:12px}
+  .section-head{gap:8px}
+  .breadcrumb{font-size:11px}
+}
