@@ -1,38 +1,11 @@
+"use client";
+
 import { useState, useEffect, useRef } from "react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Item {
-  id: string;
-  name: string;
-  sub: string;
-  category: "OPEX" | "CAPEX";
-  subcat: "medicines" | "consumables" | "devices" | "electrical";
-  stock: number;
-  min: number;
-  max: number;
-  unit: string;
-  expiry: string | null;
-  dept: string;
-  status: "healthy" | "expiring" | "expired" | "low_stock" | "amc_due" | "critical";
-  batch?: string;
-  supplier?: string;
-  price: number;
-  amc?: string | null;
-  amcExpiry?: string | null;
-  serial?: string;
-  purchase?: string;
-}
-
-interface FilterState {
-  category: "all" | "OPEX" | "CAPEX";
-  subcat: string | null;
-  status: string | null;
-  search: string;
-  highlight: string | null;
-  bannerMsg: string | null;
-  sortCol: string;
-}
+import { Item, FilterState } from "./registry/utils";
+import FilterBar from "./registry/FilterBar";
+import ResultStrip from "./registry/ResultStrip";
+import RegistryTable from "./registry/RegistryTable";
+import DetailPanel from "./registry/DetailPanel";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -86,154 +59,7 @@ const ITEMS: Item[] = [
   { id: "ELC-023", name: "Medical Refrigerator", sub: "Cold Chain — Blue Star RCIF", category: "CAPEX", subcat: "electrical", stock: 2, min: 1, max: 3, unit: "Pcs", expiry: null, dept: "PHM", status: "amc_due", amc: "Blue Star Service", amcExpiry: "2025-06-19", serial: "BS-RF-001", purchase: "2021-06-20", price: 55000 },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function stockPct(item: Item): number {
-  return Math.min(100, Math.round((item.stock / item.min) * 100));
-}
-
-function stockBarColor(item: Item): string {
-  const pct = stockPct(item);
-  if (pct <= 25) return "var(--red)";
-  if (pct <= 60) return "var(--amber)";
-  return "var(--green)";
-}
-
-function expiryLabel(item: Item): { txt: string; cls: string } {
-  if (item.category === "CAPEX") {
-    if (!item.amcExpiry) return { txt: "No AMC", cls: "expiry-none" };
-    const d = new Date(item.amcExpiry);
-    const now = new Date();
-    const days = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (days < 0) return { txt: "AMC expired", cls: "expiry-red" };
-    if (days < 60) return { txt: `AMC in ${days}d`, cls: "expiry-red" };
-    if (days < 90) return { txt: `AMC in ${days}d`, cls: "expiry-amber" };
-    return { txt: `AMC in ${days}d`, cls: "expiry-green" };
-  }
-  if (!item.expiry) return { txt: "No expiry", cls: "expiry-none" };
-  const d = new Date(item.expiry);
-  const now = new Date();
-  const days = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (days < 0) return { txt: "Expired", cls: "expiry-red" };
-  if (days < 30) return { txt: `${days} days`, cls: "expiry-red" };
-  if (days < 60) return { txt: `${days} days`, cls: "expiry-amber" };
-  return { txt: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), cls: "expiry-green" };
-}
-
-const STATUS_MAP: Record<string, [string, string]> = {
-  healthy:  ["sp-healthy",  "✓ Healthy"],
-  expiring: ["sp-expiring", "⏰ Expiring"],
-  expired:  ["sp-expired",  "🚫 Expired"],
-  low_stock:["sp-low",      "📉 Low stock"],
-  amc_due:  ["sp-amc",      "📋 AMC due"],
-  critical: ["sp-critical", "⚠ Critical"],
-};
-
-function StatusPill({ status }: { status: string }) {
-  const [cls, lbl] = STATUS_MAP[status] || ["sp-healthy", "—"];
-  return <span className={`status-pill ${cls}`}>{lbl}</span>;
-}
-
-// Styles have been moved to src/components/registry/registry.css and are
-// imported via src/app/globals.css to keep them global and shared.
-
-// ─── Detail Panel ─────────────────────────────────────────────────────────────
-
-function DetailPanel({ item, onClose }: { item: Item | null | "new"; onClose: () => void }) {
-  const isOpen = item !== null;
-
-  const renderBody = () => {
-    if (item === "new") {
-      return <p style={{ color: "var(--text-dim)", fontSize: 12 }}>Item registration form would appear here.</p>;
-    }
-    if (!item) return null;
-
-    const exp = expiryLabel(item);
-    const pct = stockPct(item);
-
-    const Field = ({ label, value, mono }: { label: string; value: string; mono?: boolean }) => (
-      <div className="dp-field">
-        <span className="dp-label">{label}</span>
-        <span className="dp-value" style={mono ? { fontFamily: "var(--mono)" } : undefined}>{value}</span>
-      </div>
-    );
-
-    return (
-      <>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-          <span className={`cat-badge ${item.category === "CAPEX" ? "cat-capex" : "cat-opex"}`}>{item.category}</span>
-          <span className="subcat-badge">{item.subcat}</span>
-          <StatusPill status={item.status} />
-        </div>
-
-        <div className="dp-section">
-          <div className="dp-section-title">Item details</div>
-          <Field label="Item ID" value={item.id} mono />
-          <Field label="Name" value={item.name} />
-          <Field label="Category" value={`${item.category} — ${item.subcat}`} />
-          <Field label="Department" value={item.dept} />
-          <Field label="Unit" value={item.unit} />
-          <Field label="Supplier" value={item.supplier || item.amc || "—"} />
-          <Field label="Price per unit" value={item.price ? `₹${item.price.toLocaleString()}` : "—"} />
-        </div>
-
-        {item.category === "OPEX" ? (
-          <div className="dp-section">
-            <div className="dp-section-title">Stock & expiry</div>
-            <Field label="Current stock" value={`${item.stock.toLocaleString()} ${item.unit}`} mono />
-            <Field label="Minimum level" value={`${item.min.toLocaleString()} ${item.unit}`} mono />
-            <div className="dp-field">
-              <span className="dp-label">Stock level</span>
-              <span className="dp-value">
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div className="stock-bar-track" style={{ width: 80, display: "inline-block" }}>
-                    <div className="stock-bar-fill" style={{ width: `${Math.min(pct, 100)}%`, background: stockBarColor(item) }} />
-                  </div>
-                  <span style={{ fontFamily: "var(--mono)", fontSize: 11 }}>{pct}%</span>
-                </div>
-              </span>
-            </div>
-            <Field label="Batch number" value={item.batch || "—"} mono />
-            <div className="dp-field">
-              <span className="dp-label">Expiry date</span>
-              <span className={`dp-value expiry-cell ${exp.cls}`}>{exp.txt}</span>
-            </div>
-          </div>
-        ) : (
-          <div className="dp-section">
-            <div className="dp-section-title">Asset & AMC details</div>
-            <Field label="Quantity" value={`${item.stock} ${item.unit}`} />
-            <Field label="Serial number" value={item.serial || "—"} mono />
-            <Field label="Purchase date" value={item.purchase ? new Date(item.purchase).toLocaleDateString("en-IN") : "—"} />
-            <Field label="Purchase price" value={`₹${item.price.toLocaleString()}`} />
-            <Field label="AMC vendor" value={item.amc || "No AMC required"} />
-            <Field label="AMC expiry" value={item.amcExpiry ? new Date(item.amcExpiry).toLocaleDateString("en-IN") : "—"} />
-          </div>
-        )}
-      </>
-    );
-  };
-
-  const title = item === "new" ? "Add new item" : item?.name ?? "Item details";
-
-  return (
-    <div className={`detail-overlay${isOpen ? " open" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ flex: 1 }} onClick={onClose} />
-      <div className="detail-panel">
-        <div className="dp-header">
-          <div className="dp-title">{title}</div>
-          <div className="dp-close" onClick={onClose}>×</div>
-        </div>
-        <div className="dp-body">{renderBody()}</div>
-        <div className="dp-actions">
-          <div className="dp-btn" onClick={onClose}>Close</div>
-          <div className="dp-btn" onClick={() => alert("Opening Stock Issue for: " + (item !== "new" && item ? item.name : "new item"))}>Issue stock</div>
-          <div className="dp-btn primary" onClick={() => alert("Opening Stock Inward for: " + (item !== "new" && item ? item.name : "new item"))}>Record GRN</div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Helpers and panel components have been moved to src/components/registry/*
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -374,169 +200,18 @@ export default function AyurVaidyaRegistry() {
         {/* Topbar */}
        
 
-        {/* Filter bar */}
-        <div className="filter-bar">
-          {filters.bannerMsg && (
-            <div className="filter-banner show">
-              <span style={{ fontSize: 14 }}>🔗</span>
-              <span className="filter-banner-text">{filters.bannerMsg}</span>
-              <span className="filter-banner-clear" onClick={clearAllFilters}>Clear filter ×</span>
-            </div>
-          )}
-          <div className="filter-top">
-            <div className="search-wrap">
-              <span className="search-icon">🔍</span>
-              <input
-                type="text"
-                placeholder="Search by name, batch, department…"
-                value={filters.search}
-                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-              />
-            </div>
-            <button className="btn" onClick={() => alert("Column visibility panel — coming soon")}>⊞ Columns</button>
-            <button className="btn" onClick={() => alert("Exporting to Excel…")}>↓ Export Excel</button>
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-dim)" }}>
-              Total <strong style={{ color: "var(--text)", marginLeft: 3 }}>{ITEMS.length}</strong>
-            </div>
-          </div>
+        <FilterBar
+          filters={filters}
+          setFilters={setFilters}
+          setCategory={setCategory}
+          setSubcat={setSubcat}
+          setStatus={setStatus}
+          clearAllFilters={clearAllFilters}
+        />
 
-          <div className="filter-chips-row">
-            <span className="filter-group-label">Category:</span>
-            <span className={chipClass("chip", "all",   filters.category === "all")}   onClick={() => setCategory("all")}>All items</span>
-            <span className={chipClass("chip", "capex", filters.category === "CAPEX")} onClick={() => setCategory("CAPEX")}>◈ CAPEX</span>
-            <span className={chipClass("chip", "opex",  filters.category === "OPEX")}  onClick={() => setCategory("OPEX")}>◉ OPEX</span>
+        <ResultStrip filters={filters} filteredCount={filtered.length} setFilters={setFilters} />
 
-            <div className="filter-divider" />
-            <span className="filter-group-label">Sub-type:</span>
-            <span className={chipClass("chip", "devices",     filters.subcat === "devices")}     onClick={() => setSubcat("devices")}>🩺 Medical devices</span>
-            <span className={chipClass("chip", "electrical",  filters.subcat === "electrical")}  onClick={() => setSubcat("electrical")}>💡 Electrical</span>
-            <span className={chipClass("chip", "medicines",   filters.subcat === "medicines")}   onClick={() => setSubcat("medicines")}>🌿 Medicines</span>
-            <span className={chipClass("chip", "consumables", filters.subcat === "consumables")} onClick={() => setSubcat("consumables")}>📦 Consumables</span>
-
-            <div className="filter-divider" />
-            <span className="filter-group-label">Status:</span>
-            <span className={chipClass("chip", "expiring",  filters.status === "expiring")}  onClick={() => setStatus("expiring")}>⏰ Expiring soon</span>
-            <span className={chipClass("chip", "expired",   filters.status === "expired")}   onClick={() => setStatus("expired")}>🚫 Expired</span>
-            <span className={chipClass("chip", "low_stock", filters.status === "low_stock")} onClick={() => setStatus("low_stock")}>📉 Low stock</span>
-            <span className={chipClass("chip", "amc_due",   filters.status === "amc_due")}   onClick={() => setStatus("amc_due")}>📋 AMC due</span>
-            <span className={chipClass("chip", "healthy",   filters.status === "healthy")}   onClick={() => setStatus("healthy")}>✓ Healthy</span>
-          </div>
-        </div>
-
-        {/* Result strip */}
-        <div className="result-strip">
-          <div className="result-count">Showing <strong>{filtered.length}</strong> items</div>
-          <div className="sort-row">
-            Sort by
-            <select
-              className="sort-select"
-              value={filters.sortCol}
-              onChange={(e) => setFilters((f) => ({ ...f, sortCol: e.target.value }))}
-            >
-              <option value="name">Name A–Z</option>
-              <option value="status">Status</option>
-              <option value="expiry">Expiry date</option>
-              <option value="stock">Stock level</option>
-              <option value="dept">Department</option>
-            </select>
-            <div className="view-toggle">
-              <div className="vt-btn active" title="Table view">☰</div>
-              <div className="vt-btn" title="Grid view">⊞</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="table-wrap">
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">🔍</div>
-              <div className="empty-title">No items match your filters</div>
-              <div className="empty-sub">Try adjusting the category, status, or search term</div>
-            </div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th onClick={() => setFilters((f) => ({ ...f, sortCol: "id" }))}>
-                    ID <span className="sort-arrow">↕</span>
-                  </th>
-                  <th className={filters.sortCol === "name" ? "sorted" : ""} onClick={() => setFilters((f) => ({ ...f, sortCol: "name" }))}>
-                    Item name <span className="sort-arrow">{filters.sortCol === "name" ? "↑" : "↕"}</span>
-                  </th>
-                  <th onClick={() => setFilters((f) => ({ ...f, sortCol: "category" }))}>
-                    Category <span className="sort-arrow">↕</span>
-                  </th>
-                  <th>Sub-type <span className="sort-arrow">↕</span></th>
-                  <th onClick={() => setFilters((f) => ({ ...f, sortCol: "stock" }))}>
-                    Stock / Qty <span className="sort-arrow">↕</span>
-                  </th>
-                  <th onClick={() => setFilters((f) => ({ ...f, sortCol: "expiry" }))}>
-                    Expiry / AMC <span className="sort-arrow">↕</span>
-                  </th>
-                  <th onClick={() => setFilters((f) => ({ ...f, sortCol: "dept" }))}>
-                    Department <span className="sort-arrow">↕</span>
-                  </th>
-                  <th onClick={() => setFilters((f) => ({ ...f, sortCol: "status" }))}>
-                    Status <span className="sort-arrow">↕</span>
-                  </th>
-                  <th style={{ width: 120 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((item, idx) => {
-                  const pct = stockPct(item);
-                  const exp = expiryLabel(item);
-                  const isHL = filters.highlight === item.id;
-
-                  const stockDisp = item.category === "CAPEX" ? (
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 12 }}>{item.stock} {item.unit}</span>
-                  ) : (
-                    <div className="stock-cell">
-                      <div className="stock-nums">{item.stock.toLocaleString()} / {item.min.toLocaleString()} {item.unit}</div>
-                      <div className="stock-bar-track">
-                        <div className="stock-bar-fill" style={{ width: `${Math.min(pct, 100)}%`, background: stockBarColor(item) }} />
-                      </div>
-                    </div>
-                  );
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className={isHL ? "highlighted" : ""}
-                      style={{ animationDelay: `${idx * 0.02}s` }}
-                      ref={isHL ? (el) => { highlightRef.current = el; } : undefined}
-                      data-id={item.id}
-                      onClick={() => setDetailItem(item)}
-                    >
-                      <td><span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-dim)" }}>{item.id}</span></td>
-                      <td>
-                        <div className="item-name-cell">
-                          <div className="item-name">{item.name}</div>
-                          <div className="item-sub">{item.sub}</div>
-                        </div>
-                      </td>
-                      <td><span className={`cat-badge ${item.category === "CAPEX" ? "cat-capex" : "cat-opex"}`}>{item.category}</span></td>
-                      <td><span className="subcat-badge">{item.subcat}</span></td>
-                      <td>{stockDisp}</td>
-                      <td><span className={`expiry-cell ${exp.cls}`}>{exp.txt}</span></td>
-                      <td><span className="dept-cell">{item.dept}</span></td>
-                      <td><StatusPill status={item.status} /></td>
-                      <td>
-                        <div className="action-cell">
-                          <button className="action-btn" onClick={(e) => { e.stopPropagation(); setDetailItem(item); }}>View</button>
-                          <button className="action-btn primary-sm" onClick={(e) => { e.stopPropagation(); alert((item.category === "OPEX" ? "Opening GRN" : "Details") + " for: " + item.name); }}>
-                            {item.category === "OPEX" ? "GRN" : "Details"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <RegistryTable items={filtered} highlight={filters.highlight} onRowClick={(it) => setDetailItem(it)} highlightRef={highlightRef} />
       </div>
 
       {/* ── Detail Panel ───────────────────────────────────────── */}
