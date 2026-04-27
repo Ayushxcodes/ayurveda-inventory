@@ -8,9 +8,10 @@ const BarChart = dynamic(() => import('../components/charts/BarChart'), { ssr: f
 const OpexDashboard = dynamic(() => import('../components/OpexDashboard'), { ssr: false });
 const CapexDashboard = dynamic(() => import('../components/CapexDashboard'), { ssr: false });
 const AllItemsDashboard = dynamic(() => import('../components/AllItemsDashboard'), { ssr: false });
+const RegistryDashboard = dynamic(() => import('../components/RegistryDashboard'), { ssr: false });
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'ALL'|'CAPEX'|'OPEX'>('CAPEX');
+  const [activeTab, setActiveTab] = useState<'ALL'|'CAPEX'|'OPEX'|'REG'>('CAPEX');
 
   const breadcrumbLabel = activeTab === 'OPEX' ? 'OPEX stock' : activeTab === 'CAPEX' ? 'CAPEX assets' : 'All items';
 
@@ -30,8 +31,8 @@ export default function Home() {
         <nav>
           <div className="nav-block">
             <div className="nav-label">Main</div>
-            <div className="nav-item active"><div className="nav-icon">▦</div> Dashboard</div>
-            <div className="nav-item"><div className="nav-icon">☰</div> Item Registry</div>
+            <div className={`nav-item ${activeTab !== 'REG' ? 'active' : ''}`}><div className="nav-icon">▦</div> Dashboard</div>
+            <div className={`nav-item ${activeTab === 'REG' ? 'active' : ''}`} onClick={()=>setActiveTab('REG')}><div className="nav-icon">☰</div> Item Registry</div>
             <div className="nav-item"><div className="nav-icon">↓</div> Stock Inward</div>
             <div className="nav-item"><div className="nav-icon">↑</div> Stock Issue</div>
           </div>
@@ -83,7 +84,9 @@ export default function Home() {
         </div>
 
         <div className="content">
-          {activeTab === 'ALL' ? (
+          {activeTab === 'REG' ? (
+            <RegistryDashboard />
+          ) : activeTab === 'ALL' ? (
             <AllItemsDashboard />
           ) : activeTab === 'OPEX' ? (
             <OpexDashboard />
