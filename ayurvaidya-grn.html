@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AyurVaidya — Stock Inward (GRN)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f1f4f1;--surface:#fff;--surface-2:#f8faf8;
+  --border:#dce8dc;--border-2:#c8d8c8;
+  --green:#1A6B3C;--green-mid:#2D7A52;--green-light:#eaf3ee;--green-xl:#3aa864;
+  --blue:#185FA5;--blue-light:#e8f1fb;
+  --red:#B91C1C;--red-light:#fef2f2;
+  --amber:#92400E;--amber-light:#fffbeb;
+  --slate:#3d5a6c;--slate-light:#eef4f8;
+  --text:#0d1f12;--text-mid:#3d6148;--text-dim:#7a9982;--text-mute:#a8bfac;
+  --mono:'DM Mono',monospace;--sans:'Sora',sans-serif;--serif:'Playfair Display',serif;
+  --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex}
+
+/* Sidebar */
+.sb{width:204px;min-width:204px;background:var(--green);display:flex;flex-direction:column;height:100vh;position:relative;overflow:hidden}
+.sb::after{content:'';position:absolute;bottom:-80px;right:-80px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.03);pointer-events:none}
+.logo-area{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.logo-name{font-family:var(--serif);font-size:22px;color:#fff;letter-spacing:-0.3px;line-height:1.05;margin-bottom:4px}
+.logo-sub{font-size:10px;color:rgba(255,255,255,0.42);line-height:1.55;font-weight:300}
+.logo-pill{display:inline-block;margin-top:8px;padding:2px 8px;border:1px solid rgba(255,255,255,0.18);border-radius:20px;font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.45);letter-spacing:0.4px}
+.nav-s{padding:12px 0 4px}
+.nav-lbl{font-size:9px;font-weight:600;color:rgba(255,255,255,0.28);letter-spacing:1.2px;text-transform:uppercase;padding:0 16px 6px}
+.nav-i{display:flex;align-items:center;gap:9px;padding:8px 16px;font-size:12.5px;color:rgba(255,255,255,0.58);cursor:pointer;border-left:2px solid transparent;transition:background 0.12s,color 0.12s}
+.nav-i:hover{background:rgba(255,255,255,0.06);color:#fff}
+.nav-i.active{background:rgba(255,255,255,0.12);color:#fff;border-left-color:rgba(255,255,255,0.65);font-weight:500}
+.nav-icon{width:26px;height:26px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(255,255,255,0.07);flex-shrink:0}
+.nav-i.active .nav-icon{background:rgba(255,255,255,0.14)}
+.nav-chip{margin-left:auto;font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:20px;background:rgba(220,38,38,0.22);color:#fca5a5;border:1px solid rgba(220,38,38,0.22)}
+.nav-chip.a{background:rgba(245,158,11,0.18);color:#fcd34d;border-color:rgba(245,158,11,0.22)}
+.sb-user{margin-top:auto;padding:14px 16px;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px}
+.av{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0}
+.u-name{font-size:11.5px;color:#fff;font-weight:500}
+.u-role{font-size:10px;color:rgba(255,255,255,0.38)}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100vh}
+
+/* Topbar */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;flex-shrink:0}
+.tb-l{display:flex;align-items:center;gap:10px}
+.page-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.2px}
+.breadcrumb{font-size:12px;color:var(--text-dim)}
+.bc-link{color:var(--blue);cursor:pointer}
+.bc-link:hover{text-decoration:underline}
+.tb-r{display:flex;align-items:center;gap:10px}
+.status-pill{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--green-mid);padding:4px 10px;background:var(--green-light);border:1px solid rgba(26,107,60,0.18);border-radius:20px}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--green-xl);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(58,168,100,0.35)}50%{box-shadow:0 0 0 4px rgba(58,168,100,0)}}
+.date-chip{font-family:var(--mono);font-size:11px;color:var(--text-dim);padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm)}
+.icon-btn{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text-dim);position:relative;transition:all 0.15s}
+.icon-btn:hover{border-color:var(--green);color:var(--green)}
+.notif-badge{position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:var(--red);border-radius:50%;font-size:8px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface)}
+
+/* Steps bar */
+.steps-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 22px;flex-shrink:0;display:flex;align-items:center;gap:0}
+.step-item{display:flex;align-items:center;gap:10px}
+.step-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;transition:all 0.25s}
+.step-num.done{background:var(--green);color:#fff}
+.step-num.active{background:var(--green);color:#fff;box-shadow:0 0 0 4px rgba(26,107,60,0.18)}
+.step-num.idle{background:var(--bg);color:var(--text-dim);border:1.5px solid var(--border)}
+.step-label{font-size:12px;font-weight:500;transition:color 0.25s}
+.step-label.active{color:var(--green)}
+.step-label.done{color:var(--green-mid)}
+.step-label.idle{color:var(--text-mute)}
+.step-line{flex:1;height:1.5px;background:var(--border);margin:0 14px;border-radius:1px;overflow:hidden;position:relative}
+.step-line-fill{position:absolute;left:0;top:0;height:100%;background:var(--green);border-radius:1px;transition:width 0.4s ease}
+
+/* Content area */
+.content{flex:1;display:flex;overflow:hidden}
+
+/* Left: form panel */
+.form-panel{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:18px}
+.form-panel::-webkit-scrollbar{width:4px}
+.form-panel::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:2px}
+
+/* Right: preview panel */
+.preview-panel{width:300px;min-width:300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.pp-head{padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.pp-title{font-size:12px;font-weight:500;color:var(--text-mid)}
+.pp-sub{font-size:11px;color:var(--text-mute);margin-top:2px}
+.pp-body{flex:1;overflow-y:auto;padding:16px}
+.pp-body::-webkit-scrollbar{width:3px}
+.pp-body::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:2px}
+.pp-foot{padding:14px 16px;border-top:1px solid var(--border);flex-shrink:0}
+
+/* Cards */
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;animation:slideUp 0.28s ease both}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fc-head{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.fc-title{font-size:12.5px;font-weight:500;color:var(--text-mid);display:flex;align-items:center;gap:8px}
+.fc-step-dot{width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fc-body{padding:16px}
+
+/* Scan row */
+.scan-row{display:flex;gap:10px;margin-bottom:12px}
+.scan-input-wrap{position:relative;flex:1}
+.scan-input{width:100%;padding:10px 14px 10px 38px;border:1.5px solid var(--border);border-radius:var(--r-md);font-family:var(--sans);font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color 0.15s}
+.scan-input:focus{border-color:var(--green)}
+.scan-input::placeholder{color:var(--text-mute)}
+.scan-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--text-dim);pointer-events:none}
+.scan-btn{display:flex;align-items:center;gap:6px;padding:10px 16px;border-radius:var(--r-md);font-family:var(--sans);font-size:12.5px;font-weight:500;cursor:pointer;background:var(--green);color:#fff;border:1px solid var(--green);white-space:nowrap;transition:all 0.15s}
+.scan-btn:hover{background:var(--green-mid)}
+
+/* Search results dropdown */
+.search-results{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.1);margin-bottom:12px;animation:slideUp 0.18s ease}
+.sr-item{padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);transition:background 0.1s}
+.sr-item:last-child{border-bottom:none}
+.sr-item:hover{background:var(--green-light)}
+.sr-name{font-size:13px;font-weight:500;color:var(--text)}
+.sr-sub{font-size:11px;color:var(--text-dim);margin-top:1px}
+.sr-right{text-align:right}
+.sr-stock{font-family:var(--mono);font-size:12px;color:var(--text)}
+.sr-cat{font-size:10.5px;color:var(--text-dim)}
+
+/* Selected item card */
+.selected-item{background:var(--green-light);border:1.5px solid rgba(26,107,60,0.3);border-radius:var(--r-lg);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
+.si-info{}
+.si-name{font-size:13px;font-weight:500;color:var(--green)}
+.si-sub{font-size:11px;color:var(--green-mid);margin-top:2px}
+.si-badges{display:flex;gap:6px;margin-top:6px}
+.si-change{font-size:11px;color:var(--green-mid);cursor:pointer;text-decoration:underline}
+
+/* Form fields */
+.field-grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+.g1{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11.5px;font-weight:500;color:var(--text-mid)}
+.field .req{color:var(--red);margin-left:2px}
+.field input,.field select,.field textarea{padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r-md);font-family:var(--sans);font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color 0.15s,background 0.15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--green);background:var(--surface)}
+.field input::placeholder{color:var(--text-mute)}
+.field-hint{font-size:10.5px;color:var(--text-mute);margin-top:3px}
+.field-computed{font-size:10.5px;color:var(--green-mid);margin-top:3px;font-weight:500}
+.field-warn{font-size:10.5px;color:var(--amber);margin-top:3px}
+
+/* Batch warning box */
+.batch-warn-box{background:var(--amber-light);border:1px solid rgba(146,64,14,0.25);border-radius:var(--r-md);padding:10px 12px;font-size:12px;color:var(--amber);display:none}
+.batch-warn-box.show{display:block}
+.batch-warn-box strong{display:block;margin-bottom:3px}
+
+/* FEFO preview in form */
+.fefo-preview{background:var(--green-light);border:1px solid rgba(26,107,60,0.2);border-radius:var(--r-md);padding:10px 12px;margin-top:4px}
+.fefo-title{font-size:11px;font-weight:600;color:var(--green-mid);margin-bottom:6px;letter-spacing:0.3px;text-transform:uppercase}
+.fefo-list{display:flex;flex-direction:column;gap:4px}
+.fefo-row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-mid)}
+.fefo-pos{width:18px;height:18px;border-radius:50%;background:var(--green);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fefo-pos.new{background:var(--blue);animation:pulseBlue 1.2s ease infinite}
+@keyframes pulseBlue{0%,100%{box-shadow:0 0 0 0 rgba(24,95,165,0.35)}50%{box-shadow:0 0 0 4px rgba(24,95,165,0)}}
+.fefo-name{flex:1}
+.fefo-exp{font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+.fefo-tag{font-size:9px;padding:1px 6px;border-radius:10px;font-weight:600}
+.fefo-tag.fefo{background:var(--green);color:#fff}
+.fefo-tag.new-b{background:var(--blue);color:#fff}
+
+/* Action buttons */
+.action-row{display:flex;gap:10px;align-items:center}
+.btn-cancel{padding:10px 20px;border-radius:var(--r-md);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--text-dim);border:1.5px solid var(--border);transition:all 0.15s}
+.btn-cancel:hover{border-color:var(--border-2);color:var(--text)}
+.btn-back{padding:10px 20px;border-radius:var(--r-md);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;background:var(--surface);color:var(--text-mid);border:1.5px solid var(--border);transition:all 0.15s}
+.btn-back:hover{border-color:var(--green-mid);color:var(--text)}
+.btn-next{padding:10px 24px;border-radius:var(--r-md);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;background:var(--green);color:#fff;border:1.5px solid var(--green);transition:all 0.15s;margin-left:auto}
+.btn-next:hover{background:var(--green-mid)}
+.btn-next:disabled{background:var(--border-2);border-color:var(--border-2);color:var(--text-mute);cursor:not-allowed}
+.btn-save{padding:10px 28px;border-radius:var(--r-md);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;background:var(--green);color:#fff;border:1.5px solid var(--green);transition:all 0.15s;margin-left:auto}
+.btn-save:hover{background:var(--green-mid)}
+
+/* Preview panel content */
+.preview-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center;color:var(--text-mute)}
+.pe-icon{font-size:32px;margin-bottom:10px;opacity:0.3}
+.pe-text{font-size:12px;line-height:1.5}
+.preview-section{margin-bottom:16px}
+.ps-title{font-size:10px;font-weight:600;letter-spacing:0.7px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.ps-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)}
+.ps-row:last-child{border-bottom:none}
+.ps-lbl{color:var(--text-dim)}
+.ps-val{color:var(--text);font-weight:500;text-align:right}
+.ps-val.green{color:var(--green)}
+.ps-val.red{color:var(--red)}
+.ps-val.amber{color:var(--amber)}
+.ps-val.mono{font-family:var(--mono)}
+
+/* Stock change preview */
+.stock-change-box{background:var(--green-light);border:1px solid rgba(26,107,60,0.2);border-radius:var(--r-md);padding:12px;margin-bottom:12px;text-align:center}
+.scb-label{font-size:11px;color:var(--green-mid);margin-bottom:6px}
+.scb-values{display:flex;align-items:center;justify-content:center;gap:10px}
+.scb-old{font-family:var(--mono);font-size:18px;color:var(--text-dim)}
+.scb-arrow{font-size:16px;color:var(--green-mid)}
+.scb-new{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--green)}
+.scb-unit{font-size:11px;color:var(--green-mid);margin-top:3px}
+.scb-diff{display:inline-block;margin-top:5px;padding:2px 8px;background:var(--green);color:#fff;border-radius:20px;font-size:11px;font-weight:500;font-family:var(--mono)}
+
+/* QR preview */
+.qr-preview{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;text-align:center;margin-bottom:12px}
+.qr-box{width:80px;height:80px;background:var(--bg);border:2px dashed var(--border-2);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 10px}
+.qr-id{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px}
+.qr-name{font-size:11px;color:var(--text-dim);margin-bottom:8px}
+.btn-print{width:100%;padding:7px;border-radius:var(--r-sm);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:var(--blue);border:1px solid rgba(24,95,165,0.3);transition:all 0.15s}
+.btn-print:hover{background:var(--blue-light)}
+
+/* Shelf life indicator */
+.shelf-indicator{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r-md);font-size:12px;margin-top:6px}
+.shelf-good{background:var(--green-light);color:var(--green);border:1px solid rgba(26,107,60,0.2)}
+.shelf-ok{background:var(--amber-light);color:var(--amber);border:1px solid rgba(146,64,14,0.2)}
+.shelf-warn{background:var(--red-light);color:var(--red);border:1px solid rgba(185,28,28,0.2)}
+
+/* Recent GRN table */
+.grn-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.grn-table th{background:var(--bg);padding:7px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text-dim);letter-spacing:0.4px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.grn-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.grn-table tr:last-child td{border-bottom:none}
+.grn-table tr:hover td{background:var(--green-light);cursor:pointer}
+.grn-mono{font-family:var(--mono);font-size:11px}
+.grn-badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:500}
+.gb-opex{background:var(--green-light);color:var(--green);border:1px solid rgba(26,107,60,0.2)}
+.gb-capex{background:var(--blue-light);color:var(--blue);border:1px solid rgba(24,95,165,0.2)}
+
+/* Success state */
+.success-card{background:var(--green);border-radius:var(--r-xl);padding:32px 24px;text-align:center;color:#fff;animation:slideUp 0.3s ease}
+.sc-icon{font-size:48px;margin-bottom:16px}
+.sc-title{font-size:20px;font-weight:600;margin-bottom:8px;font-family:var(--serif)}
+.sc-sub{font-size:13px;color:rgba(255,255,255,0.75);line-height:1.6;margin-bottom:24px}
+.sc-actions{display:flex;gap:10px;justify-content:center}
+.sc-btn{padding:10px 20px;border-radius:var(--r-md);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s}
+.sc-btn-white{background:#fff;color:var(--green);border:none}
+.sc-btn-white:hover{background:var(--green-light)}
+.sc-btn-outline{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.4)}
+.sc-btn-outline:hover{background:rgba(255,255,255,0.1)}
+
+/* Tabs */
+.tab-bar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 22px;flex-shrink:0}
+.tab{padding:10px 20px;font-size:12.5px;cursor:pointer;color:var(--text-dim);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s}
+.tab:hover{color:var(--text-mid)}
+.tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:500}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;white-space:nowrap}
+.badge-opex{background:var(--green-light);color:var(--green);border:1px solid rgba(26,107,60,0.2)}
+.badge-capex{background:var(--blue-light);color:var(--blue);border:1px solid rgba(24,95,165,0.2)}
+.badge-sub{background:var(--bg);color:var(--text-mid);border:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sb">
+  <div class="logo-area">
+    <div class="logo-name">AyurVaidya</div>
+    <div class="logo-sub">All India Institute of<br>Ayurveda, Faridabad</div>
+    <div class="logo-pill">AIIA · AYUSH</div>
+  </div>
+  <nav>
+    <div class="nav-s">
+      <div class="nav-lbl">Main</div>
+      <div class="nav-i"><div class="nav-icon">▦</div>Dashboard</div>
+      <div class="nav-i"><div class="nav-icon">☰</div>Item Registry</div>
+      <div class="nav-i active"><div class="nav-icon" style="background:rgba(255,255,255,0.14)">↓</div>Stock Inward</div>
+      <div class="nav-i"><div class="nav-icon">↑</div>Stock Issue</div>
+    </div>
+    <div class="nav-s">
+      <div class="nav-lbl">Insights</div>
+      <div class="nav-i"><div class="nav-icon">⚑</div>Alerts<span class="nav-chip">22</span></div>
+      <div class="nav-i"><div class="nav-icon">≡</div>Reports</div>
+      <div class="nav-i"><div class="nav-icon">✦</div>AI Assistant</div>
+    </div>
+    <div class="nav-s">
+      <div class="nav-lbl">Category</div>
+      <div class="nav-i"><div class="nav-icon" style="color:#93c5fd">◈</div>CAPEX items<span class="nav-chip a">3 AMC</span></div>
+      <div class="nav-i"><div class="nav-icon" style="color:#86efac">◉</div>OPEX items<span class="nav-chip">7</span></div>
+    </div>
+  </nav>
+  <div class="sb-user">
+    <div class="av">RK</div>
+    <div><div class="u-name">Ramesh Kumar</div><div class="u-role">Store Manager</div></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="tb-l">
+      <div class="page-title">Stock Inward (GRN)</div>
+      <div class="breadcrumb">/ <span class="bc-link">Dashboard</span> / <span style="color:var(--text-mid)">New GRN entry</span></div>
+    </div>
+    <div class="tb-r">
+      <div class="status-pill"><div class="pulse"></div>System online</div>
+      <div class="date-chip">21 Apr 2025</div>
+      <div class="icon-btn">🔔<div class="notif-badge">7</div></div>
+    </div>
+  </header>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('new')">New GRN entry</div>
+    <div class="tab" onclick="switchTab('history')">GRN history</div>
+  </div>
+
+  <!-- Steps bar -->
+  <div class="steps-bar" id="stepsBar">
+    <div class="step-item">
+      <div class="step-num active" id="snum1">1</div>
+      <div class="step-label active" id="slbl1">Find item</div>
+    </div>
+    <div class="step-line"><div class="step-line-fill" id="sline1" style="width:0%"></div></div>
+    <div class="step-item">
+      <div class="step-num idle" id="snum2">2</div>
+      <div class="step-label idle" id="slbl2">Enter batch details</div>
+    </div>
+    <div class="step-line"><div class="step-line-fill" id="sline2" style="width:0%"></div></div>
+    <div class="step-item">
+      <div class="step-num idle" id="snum3">3</div>
+      <div class="step-label idle" id="slbl3">Confirm & save</div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- Form panel -->
+    <div class="form-panel" id="formPanel">
+
+      <!-- STEP 1: Find item -->
+      <div id="step1">
+        <div class="form-card" style="animation-delay:0.04s">
+          <div class="fc-head">
+            <div class="fc-title"><div class="fc-step-dot">1</div>Find item to receive stock for</div>
+          </div>
+          <div class="fc-body">
+            <div class="scan-row">
+              <div class="scan-input-wrap">
+                <span class="scan-icon">🔍</span>
+                <input type="text" class="scan-input" id="searchInput"
+                  placeholder="Scan QR code, barcode, or type item name / ID…"
+                  oninput="handleSearch(this.value)" autocomplete="off">
+              </div>
+              <button class="scan-btn" onclick="simulateScan()">📷 Scan QR</button>
+            </div>
+
+            <!-- Search results (shown while typing) -->
+            <div class="search-results" id="searchResults" style="display:none"></div>
+
+            <!-- Selected item display -->
+            <div class="selected-item" id="selectedItem" style="display:none">
+              <div class="si-info">
+                <div class="si-name" id="si-name">—</div>
+                <div class="si-sub" id="si-sub">—</div>
+                <div class="si-badges" id="si-badges"></div>
+              </div>
+              <span class="si-change" onclick="clearItem()">Change item</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row" style="margin-top:4px">
+          <button class="btn-cancel" onclick="resetAll()">Cancel</button>
+          <button class="btn-next" id="nextBtn1" onclick="goStep(2)" disabled>Next: Enter batch details →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Batch details -->
+      <div id="step2" style="display:none">
+
+        <!-- Selected item reminder -->
+        <div class="selected-item" style="margin-bottom:0;cursor:default">
+          <div class="si-info">
+            <div class="si-name" id="s2-item-name">—</div>
+            <div class="si-sub" id="s2-item-sub">—</div>
+            <div class="si-badges" id="s2-item-badges"></div>
+          </div>
+          <span class="si-change" onclick="goStep(1)">← Change item</span>
+        </div>
+
+        <!-- Batch info card -->
+        <div class="form-card" style="animation-delay:0.04s">
+          <div class="fc-head">
+            <div class="fc-title"><div class="fc-step-dot">2</div>Batch & quantity details</div>
+          </div>
+          <div class="fc-body">
+            <div class="field-grid g2" style="margin-bottom:14px">
+              <div class="field">
+                <label>Batch number <span class="req">*</span></label>
+                <input type="text" id="batchNo" placeholder="e.g. BRT-2025-D1" oninput="checkBatch(this.value);updatePreview()">
+                <div class="field-hint">From supplier invoice or printed on packaging</div>
+                <div class="batch-warn-box" id="batchWarn">
+                  <strong>⚠ Batch already in system</strong>
+                  This batch number exists for this item (BRT-2024-C1, 4,500 ml, Exp: May 2026). Saving will add quantity to the existing batch record. Confirm if this is the same physical batch.
+                </div>
+              </div>
+              <div class="field">
+                <label>Quantity received <span class="req">*</span></label>
+                <div style="display:flex;gap:8px">
+                  <input type="number" id="qty" placeholder="0" style="flex:1" min="1" oninput="updatePreview()">
+                  <select id="unit" style="width:80px" onchange="updatePreview()">
+                    <option>ml</option><option>g</option><option>tab</option><option>cap</option><option>Pcs</option><option>Rolls</option><option>Pairs</option>
+                  </select>
+                </div>
+                <div class="field-computed" id="stockAfterHint"></div>
+              </div>
+            </div>
+
+            <div class="field-grid g3" style="margin-bottom:14px">
+              <div class="field">
+                <label>Manufacturing date <span class="req">*</span></label>
+                <input type="date" id="mfgDate" onchange="calcShelfLife()">
+              </div>
+              <div class="field">
+                <label>Expiry date <span class="req">*</span></label>
+                <input type="date" id="expiryDate" onchange="calcShelfLife();updatePreview()">
+                <div id="shelfLifeDisplay"></div>
+              </div>
+              <div class="field">
+                <label>Expiry type</label>
+                <select id="expiryType" onchange="updatePreview()">
+                  <option value="date">Fixed date</option>
+                  <option value="none">No expiry (CAPEX)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- FEFO preview — only for OPEX with existing batches -->
+            <div id="fefoPreview" style="display:none;margin-bottom:14px">
+              <div class="fefo-preview">
+                <div class="fefo-title">📋 FEFO dispatch order after this GRN</div>
+                <div class="fefo-list" id="fefoList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Supplier card -->
+        <div class="form-card" style="animation-delay:0.08s">
+          <div class="fc-head">
+            <div class="fc-title">Supplier & invoice details</div>
+          </div>
+          <div class="fc-body">
+            <div class="field-grid g2" style="margin-bottom:14px">
+              <div class="field">
+                <label>Supplier name <span class="req">*</span></label>
+                <input type="text" id="supplierName" placeholder="e.g. Kottakkal Arya Vaidya Sala" oninput="updatePreview()">
+              </div>
+              <div class="field">
+                <label>Invoice / Challan number <span class="req">*</span></label>
+                <input type="text" id="invoiceNo" placeholder="e.g. INV-2025-0892" oninput="updatePreview()">
+              </div>
+            </div>
+            <div class="field-grid g3">
+              <div class="field">
+                <label>Invoice date</label>
+                <input type="date" id="invoiceDate">
+              </div>
+              <div class="field">
+                <label>Price per unit (₹)</label>
+                <input type="number" id="pricePerUnit" placeholder="0.00" min="0" oninput="updatePreview()">
+              </div>
+              <div class="field">
+                <label>Total invoice value (₹)</label>
+                <input type="number" id="invoiceValue" placeholder="Auto-calculated" readonly style="background:var(--bg);color:var(--text-dim)" id="invoiceTotal">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Storage card -->
+        <div class="form-card" style="animation-delay:0.12s">
+          <div class="fc-head">
+            <div class="fc-title">Storage location & notes</div>
+          </div>
+          <div class="fc-body">
+            <div class="field-grid g2" style="margin-bottom:14px">
+              <div class="field">
+                <label>Store location</label>
+                <select id="storeLocation">
+                  <option>Main pharmacy store</option>
+                  <option>Panchakarma store</option>
+                  <option>Shalakya store</option>
+                  <option>IPD store</option>
+                  <option>Cold storage (2–8°C)</option>
+                  <option>Controlled temperature</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Received by</label>
+                <input type="text" id="receivedBy" value="Ramesh Kumar" placeholder="Store manager name">
+              </div>
+            </div>
+            <div class="field">
+              <label>Notes / remarks</label>
+              <textarea id="notes" rows="2" placeholder="Any quality observations, damaged packaging, partial delivery notes…" style="resize:vertical"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-back" onclick="goStep(1)">← Back</button>
+          <button class="btn-cancel" onclick="resetAll()">Cancel</button>
+          <button class="btn-next" id="nextBtn2" onclick="goStep(3)">Next: Review & confirm →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Confirm & save -->
+      <div id="step3" style="display:none">
+        <div class="form-card" style="animation-delay:0.04s">
+          <div class="fc-head">
+            <div class="fc-title"><div class="fc-step-dot">3</div>Review & confirm GRN</div>
+            <span style="font-size:11px;color:var(--text-dim)">GRN # will be auto-generated on save</span>
+          </div>
+          <div class="fc-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div>
+                <div style="font-size:10px;font-weight:600;letter-spacing:0.7px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Item & batch</div>
+                <div id="confirmItemSection"></div>
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:600;letter-spacing:0.7px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Supplier & invoice</div>
+                <div id="confirmSupplierSection"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- What happens on save -->
+        <div class="form-card" style="animation-delay:0.08s;border-color:rgba(26,107,60,0.35)">
+          <div class="fc-head" style="background:var(--green-light)">
+            <div class="fc-title" style="color:var(--green)">What happens when you save this GRN</div>
+          </div>
+          <div class="fc-body">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:flex-start;gap:10px;font-size:12.5px">
+                <div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">1</div>
+                <div><strong style="color:var(--text)">Stock increases live</strong><br><span style="color:var(--text-dim)" id="stockChangeDesc">—</span></div>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:10px;font-size:12.5px">
+                <div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">2</div>
+                <div><strong style="color:var(--text)">New batch added to registry</strong><br><span style="color:var(--text-dim)" id="batchAddDesc">—</span></div>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:10px;font-size:12.5px">
+                <div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">3</div>
+                <div><strong style="color:var(--text)">Expiry tracking begins</strong><br><span style="color:var(--text-dim)" id="expiryTrackDesc">—</span></div>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:10px;font-size:12.5px">
+                <div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">4</div>
+                <div><strong style="color:var(--text)">QR label ready to print</strong><br><span style="color:var(--text-dim)">A QR sticker for this batch will be generated. Print and stick on the shelf.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-back" onclick="goStep(2)">← Back</button>
+          <button class="btn-cancel" onclick="resetAll()">Cancel</button>
+          <button class="btn-save" onclick="saveGRN()">✓ Save GRN & update stock</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Success -->
+      <div id="step4" style="display:none">
+        <div class="success-card">
+          <div class="sc-icon">✓</div>
+          <div class="sc-title">GRN recorded successfully</div>
+          <div class="sc-sub" id="successMsg">Stock has been updated. Expiry tracking has begun for the new batch.</div>
+          <div class="sc-actions">
+            <button class="sc-btn sc-btn-white" onclick="printQR()">Print QR label</button>
+            <button class="sc-btn sc-btn-outline" onclick="resetAll()">Record another GRN</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY VIEW -->
+      <div id="historyView" style="display:none">
+        <div class="form-card" style="animation-delay:0.04s">
+          <div class="fc-head">
+            <div class="fc-title">Recent GRN entries</div>
+            <div style="display:flex;gap:8px">
+              <input type="text" placeholder="Search GRNs…" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);font-family:var(--sans);font-size:12px;outline:none;background:var(--bg);color:var(--text)">
+              <button style="padding:6px 12px;border-radius:var(--r-sm);font-family:var(--sans);font-size:12px;border:1px solid var(--border);background:var(--surface);color:var(--text-mid);cursor:pointer">↓ Export</button>
+            </div>
+          </div>
+          <div class="fc-body" style="padding:0">
+            <table class="grn-table">
+              <thead>
+                <tr>
+                  <th>GRN #</th><th>Date</th><th>Item</th><th>Category</th>
+                  <th>Batch</th><th>Qty received</th><th>Supplier</th><th>Invoice</th><th>Recorded by</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /form-panel -->
+
+    <!-- Preview panel -->
+    <div class="preview-panel">
+      <div class="pp-head">
+        <div class="pp-title">Live preview</div>
+        <div class="pp-sub">Updates as you fill the form</div>
+      </div>
+      <div class="pp-body" id="previewBody">
+        <div class="preview-empty">
+          <div class="pe-icon">↓</div>
+          <div class="pe-text">Select an item and fill batch details to see a live preview of what will change</div>
+        </div>
+      </div>
+      <div class="pp-foot" id="previewFoot" style="display:none">
+        <div class="qr-preview">
+          <div class="qr-box">▦</div>
+          <div class="qr-id" id="qr-id-text">ITEM-000-BATCH</div>
+          <div class="qr-name" id="qr-name-text">Item name</div>
+          <button class="btn-print">Print QR sticker</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+</div><!-- /main -->
+
+<script>
+/* DATA */
+const ITEMS_DB = [
+  {id:'MED-001',name:'Ashwagandha Churna',sub:'Rasayana · Churna',category:'OPEX',subcat:'medicines',unit:'g',dept:'PHM',currentStock:5000,minStock:1000,
+    batches:[{batchNo:'ASH-2024-A1',qty:3200,expiry:'2026-05-31'},{batchNo:'ASH-2025-B1',qty:1800,expiry:'2027-01-14'}]},
+  {id:'MED-003',name:'Brahmi Tail',sub:'Nervine · Tail',category:'OPEX',subcat:'medicines',unit:'ml',dept:'PKM',currentStock:14500,minStock:500,
+    batches:[{batchNo:'BRT-2024-C1',qty:4500,expiry:'2026-05-09'},{batchNo:'BRT-2025-D1',qty:10000,expiry:'2027-01-31'}]},
+  {id:'MED-004',name:'Haritaki Churna',sub:'Digestive · Churna',category:'OPEX',subcat:'medicines',unit:'g',dept:'PHM',currentStock:1800,minStock:800,
+    batches:[{batchNo:'HAR-2024-D3',qty:1800,expiry:'2025-03-19'}]},
+  {id:'MED-010',name:'Guduchi Churna',sub:'Immunomodulator · Churna',category:'OPEX',subcat:'medicines',unit:'g',dept:'KAY',currentStock:2500,minStock:1000,
+    batches:[{batchNo:'GUD-2024-J1',qty:800,expiry:'2025-06-30'},{batchNo:'GUD-2024-J2',qty:1700,expiry:'2025-11-30'}]},
+  {id:'CON-001',name:'Cotton Bandage (2 inch)',sub:'Wound Care · Consumable',category:'OPEX',subcat:'consumables',unit:'Rolls',dept:'PHM',currentStock:210,minStock:1000,
+    batches:[{batchNo:'JJ-CON-2024-01',qty:210,expiry:null}]},
+  {id:'CON-004',name:'Surgical Gloves (M)',sub:'PPE · Consumable',category:'OPEX',subcat:'consumables',unit:'Pairs',dept:'PHM',currentStock:45,minStock:200,
+    batches:[{batchNo:'ANS-2024-M01',qty:45,expiry:'2025-12-31'}]},
+  {id:'DEV-001',name:'Digital BP Monitor (Adult)',sub:'Diagnostic · Omron HEM-7120',category:'CAPEX',subcat:'devices',unit:'Pcs',dept:'KAY',currentStock:4,minStock:2,
+    batches:[{batchNo:'OM-SN-001',qty:4,expiry:null,amcExpiry:'2026-03-14'}]},
+  {id:'ELC-005',name:'Split AC 1.5 Ton',sub:'Air Conditioning · Daikin FTKR50',category:'CAPEX',subcat:'electrical',unit:'Pcs',dept:'KAY',currentStock:2,minStock:1,
+    batches:[{batchNo:'DK-AC-001',qty:2,expiry:null,amcExpiry:'2025-06-14'}]},
+];
+
+const GRN_HISTORY = [
+  {grn:'GRN-2025-0023',date:'2025-04-21',item:'Brahmi Tail',cat:'OPEX',batch:'BRT-2025-D1',qty:'10,000 ml',supplier:'Kottakkal AVS',invoice:'INV-2025-0044',by:'Ramesh Kumar'},
+  {grn:'GRN-2025-0022',date:'2025-04-18',item:'Cotton Bandages (2 inch)',cat:'OPEX',batch:'JJ-CON-2025-02',qty:'500 Rolls',supplier:'J&J Medical',invoice:'JJ-INV-0881',by:'Ramesh Kumar'},
+  {grn:'GRN-2025-0021',date:'2025-04-15',item:'Ashwagandha Churna',cat:'OPEX',batch:'ASH-2025-B1',qty:'1,800 g',supplier:'Dabur India Ltd.',invoice:'DAB-2025-1120',by:'Ramesh Kumar'},
+  {grn:'GRN-2025-0020',date:'2025-04-10',item:'Guduchi Churna',cat:'OPEX',batch:'GUD-2024-J2',qty:'1,700 g',supplier:'Charak Pharma',invoice:'CHK-2025-0334',by:'Ramesh Kumar'},
+  {grn:'GRN-2025-0019',date:'2025-04-08',item:'Split AC 1.5 Ton',cat:'CAPEX',batch:'DK-AC-002',qty:'1 Pcs',supplier:'Daikin India',invoice:'DK-INV-0092',by:'Ramesh Kumar'},
+  {grn:'GRN-2025-0018',date:'2025-04-02',item:'Surgical Gloves (M)',cat:'OPEX',batch:'ANS-2025-M02',qty:'500 Pairs',supplier:'Ansell Healthcare',invoice:'ANS-INV-2025-11',by:'Ramesh Kumar'},
+];
+
+/* STATE */
+let currentStep = 1;
+let selectedItem = null;
+let activeTab = 'new';
+
+/* TAB SWITCH */
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('stepsBar').style.display = tab === 'new' ? 'flex' : 'none';
+
+  if (tab === 'history') {
+    showAll(['historyView']); hideAll(['step1','step2','step3','step4']);
+    renderHistory();
+  } else {
+    hideAll(['historyView']);
+    goStep(currentStep);
+  }
+}
+
+function showAll(ids) { ids.forEach(id => { const el = document.getElementById(id); if(el) el.style.display=''; }); }
+function hideAll(ids) { ids.forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; }); }
+
+/* STEPS */
+function goStep(n) {
+  currentStep = n;
+  hideAll(['step1','step2','step3','step4']);
+  document.getElementById('step'+n).style.display = '';
+
+  // Update step indicators
+  for (let i=1; i<=3; i++) {
+    const numEl  = document.getElementById('snum'+i);
+    const lblEl  = document.getElementById('slbl'+i);
+    if (i < n) {
+      numEl.className = 'step-num done'; numEl.textContent = '✓';
+      lblEl.className = 'step-label done';
+    } else if (i === n) {
+      numEl.className = 'step-num active'; numEl.textContent = i;
+      lblEl.className = 'step-label active';
+    } else {
+      numEl.className = 'step-num idle'; numEl.textContent = i;
+      lblEl.className = 'step-label idle';
+    }
+    if (i < 3) {
+      const line = document.getElementById('sline'+i);
+      if (line) line.style.width = i < n ? '100%' : '0%';
+    }
+  }
+
+  if (n === 3) buildConfirmScreen();
+  if (n === 2 && selectedItem) populateStep2();
+  updatePreview();
+}
+
+/* SEARCH */
+function handleSearch(val) {
+  const results = document.getElementById('searchResults');
+  const selected = document.getElementById('selectedItem');
+  if (!val.trim()) { results.style.display='none'; return; }
+  const matches = ITEMS_DB.filter(i =>
+    i.name.toLowerCase().includes(val.toLowerCase()) ||
+    i.id.toLowerCase().includes(val.toLowerCase()) ||
+    i.dept.toLowerCase().includes(val.toLowerCase())
+  );
+  if (!matches.length) { results.style.display='none'; return; }
+  results.style.display = '';
+  results.innerHTML = matches.map(item => `
+    <div class="sr-item" onclick="selectItem('${item.id}')">
+      <div>
+        <div class="sr-name">${item.name}</div>
+        <div class="sr-sub">${item.sub} · ${item.dept}</div>
+      </div>
+      <div class="sr-right">
+        <div class="sr-stock">${item.currentStock.toLocaleString()} ${item.unit}</div>
+        <div class="sr-cat">${item.category} · ${item.subcat}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectItem(id) {
+  selectedItem = ITEMS_DB.find(i => i.id === id);
+  document.getElementById('searchResults').style.display = 'none';
+  document.getElementById('searchInput').value = selectedItem.name;
+
+  // Show selected card
+  document.getElementById('selectedItem').style.display = 'flex';
+  document.getElementById('si-name').textContent = selectedItem.name;
+  document.getElementById('si-sub').textContent  = selectedItem.id + ' · ' + selectedItem.sub;
+  document.getElementById('si-badges').innerHTML =
+    `<span class="badge ${selectedItem.category==='CAPEX'?'badge-capex':'badge-opex'}">${selectedItem.category}</span>`+
+    `<span class="badge badge-sub">${selectedItem.subcat}</span>`+
+    `<span class="badge badge-sub">${selectedItem.currentStock.toLocaleString()} ${selectedItem.unit} in stock</span>`;
+
+  document.getElementById('nextBtn1').disabled = false;
+  updatePreview();
+}
+
+function simulateScan() {
+  // Simulate scanning Brahmi Tail QR
+  document.getElementById('searchInput').value = 'Brahmi Tail';
+  selectItem('MED-003');
+}
+
+function clearItem() {
+  selectedItem = null;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('selectedItem').style.display = 'none';
+  document.getElementById('nextBtn1').disabled = true;
+  updatePreview();
+}
+
+/* STEP 2 POPULATION */
+function populateStep2() {
+  if (!selectedItem) return;
+  document.getElementById('s2-item-name').textContent = selectedItem.name;
+  document.getElementById('s2-item-sub').textContent  = selectedItem.id + ' · ' + selectedItem.sub;
+  document.getElementById('s2-item-badges').innerHTML =
+    `<span class="badge ${selectedItem.category==='CAPEX'?'badge-capex':'badge-opex'}">${selectedItem.category}</span>`+
+    `<span class="badge badge-sub">${selectedItem.subcat}</span>`+
+    `<span class="badge badge-sub">${selectedItem.currentStock.toLocaleString()} ${selectedItem.unit} current stock</span>`;
+
+  // Pre-fill unit
+  document.getElementById('unit').value = selectedItem.unit;
+
+  // CAPEX: hide expiry, show AMC
+  const expiryType = document.getElementById('expiryType');
+  if (selectedItem.category === 'CAPEX') {
+    expiryType.value = 'none';
+    document.getElementById('expiryDate').disabled = true;
+    document.getElementById('expiryDate').style.background = 'var(--bg)';
+  } else {
+    expiryType.value = 'date';
+    document.getElementById('expiryDate').disabled = false;
+    document.getElementById('expiryDate').style.background = '';
+  }
+
+  updateFefoPreview();
+}
+
+/* BATCH CHECK */
+function checkBatch(val) {
+  const warn = document.getElementById('batchWarn');
+  if (!selectedItem || !val.trim()) { warn.classList.remove('show'); return; }
+  const exists = selectedItem.batches.some(b => b.batchNo.toLowerCase() === val.toLowerCase());
+  if (exists) warn.classList.add('show');
+  else warn.classList.remove('show');
+  updateFefoPreview();
+}
+
+/* SHELF LIFE */
+function calcShelfLife() {
+  const mfg    = document.getElementById('mfgDate').value;
+  const expiry = document.getElementById('expiryDate').value;
+  const display= document.getElementById('shelfLifeDisplay');
+  if (!mfg || !expiry) { display.innerHTML=''; return; }
+  const months = Math.round((new Date(expiry)-new Date(mfg))/(1000*60*60*24*30.44));
+  const daysLeft= Math.round((new Date(expiry)-new Date())/(1000*60*60*24));
+  const cls = daysLeft > 180 ? 'shelf-good' : daysLeft > 60 ? 'shelf-ok' : 'shelf-warn';
+  display.innerHTML = `<div class="shelf-indicator ${cls}">
+    Shelf life: ${months} months &nbsp;·&nbsp; ${daysLeft} days remaining until expiry
+  </div>`;
+  updatePreview();
+}
+
+/* FEFO PREVIEW */
+function updateFefoPreview() {
+  const preview = document.getElementById('fefoPreview');
+  const list    = document.getElementById('fefoList');
+  if (!selectedItem || selectedItem.category !== 'OPEX') { preview.style.display='none'; return; }
+
+  const newBatch = document.getElementById('batchNo').value.trim();
+  const newExpiry= document.getElementById('expiryDate').value;
+  const newQty   = parseInt(document.getElementById('qty').value)||0;
+
+  let batches = [...selectedItem.batches.filter(b=>b.expiry).map(b=>({...b,isNew:false}))];
+  if (newBatch && newExpiry && newQty > 0) {
+    batches.push({batchNo:newBatch,qty:newQty,expiry:newExpiry,isNew:true});
+  }
+  if (!batches.length && !newBatch) { preview.style.display='none'; return; }
+
+  // Sort by expiry (FEFO)
+  batches.sort((a,b) => {
+    if (!a.expiry) return 1; if (!b.expiry) return -1;
+    return new Date(a.expiry)-new Date(b.expiry);
+  });
+
+  preview.style.display = '';
+  list.innerHTML = batches.map((b,i) => {
+    const fmtDate = b.expiry ? new Date(b.expiry).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : 'No expiry';
+    return `<div class="fefo-row">
+      <div class="fefo-pos ${b.isNew?'new':''}">${i+1}</div>
+      <div class="fefo-name">${b.batchNo} — ${b.qty.toLocaleString()} ${selectedItem.unit}</div>
+      <div class="fefo-exp">${fmtDate}</div>
+      ${i===0&&!b.isNew?'<span class="fefo-tag fefo">FEFO</span>':''}
+      ${b.isNew?'<span class="fefo-tag new-b">NEW</span>':''}
+    </div>`;
+  }).join('');
+}
+
+/* STOCK AFTER */
+function updateStockHint() {
+  if (!selectedItem) return;
+  const qty = parseInt(document.getElementById('qty').value)||0;
+  const hint= document.getElementById('stockAfterHint');
+  if (qty > 0) {
+    const newStock = selectedItem.currentStock + qty;
+    hint.textContent = 'Stock after GRN: ' + newStock.toLocaleString() + ' ' + selectedItem.unit;
+  } else hint.textContent = '';
+
+  // Auto-calc invoice value
+  const price = parseFloat(document.getElementById('pricePerUnit').value)||0;
+  const total = document.getElementById('invoiceValue');
+  if (qty > 0 && price > 0) total.value = '₹' + (qty*price).toLocaleString();
+  else total.value = '';
+}
+
+/* PREVIEW PANEL */
+function updatePreview() {
+  updateStockHint();
+  updateFefoPreview();
+
+  const body = document.getElementById('previewBody');
+  const foot = document.getElementById('previewFoot');
+
+  if (!selectedItem) {
+    body.innerHTML = '<div class="preview-empty"><div class="pe-icon">↓</div><div class="pe-text">Select an item and fill batch details to see a live preview of what will change</div></div>';
+    foot.style.display = 'none';
+    return;
+  }
+
+  const qty    = parseInt(document.getElementById('qty')?.value)||0;
+  const batch  = document.getElementById('batchNo')?.value||'—';
+  const expiry = document.getElementById('expiryDate')?.value||'';
+  const supp   = document.getElementById('supplierName')?.value||'—';
+  const inv    = document.getElementById('invoiceNo')?.value||'—';
+  const newStock = selectedItem.currentStock + qty;
+  const daysLeft = expiry ? Math.round((new Date(expiry)-new Date())/86400000) : null;
+
+  let expDisplay = '—';
+  let expClass   = '';
+  if (expiry) {
+    const d = new Date(expiry).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    if (daysLeft < 30)  { expDisplay = d + ' ('+daysLeft+'d)'; expClass='red'; }
+    else if (daysLeft < 90) { expDisplay = d + ' ('+daysLeft+'d)'; expClass='amber'; }
+    else { expDisplay = d; expClass='green'; }
+  }
+
+  body.innerHTML = `
+    <div class="stock-change-box">
+      <div class="scb-label">Stock after this GRN</div>
+      <div class="scb-values">
+        <div class="scb-old">${selectedItem.currentStock.toLocaleString()}</div>
+        <div class="scb-arrow">→</div>
+        <div class="scb-new">${newStock.toLocaleString()}</div>
+      </div>
+      <div class="scb-unit">${selectedItem.unit}</div>
+      ${qty>0?'<div class="scb-diff">+'+qty.toLocaleString()+' '+selectedItem.unit+'</div>':''}
+    </div>
+
+    <div class="preview-section">
+      <div class="ps-title">Item</div>
+      <div class="ps-row"><span class="ps-lbl">Name</span><span class="ps-val">${selectedItem.name}</span></div>
+      <div class="ps-row"><span class="ps-lbl">Category</span><span class="ps-val">${selectedItem.category} · ${selectedItem.subcat}</span></div>
+      <div class="ps-row"><span class="ps-lbl">Department</span><span class="ps-val">${selectedItem.dept}</span></div>
+      <div class="ps-row"><span class="ps-lbl">Current stock</span><span class="ps-val mono">${selectedItem.currentStock.toLocaleString()} ${selectedItem.unit}</span></div>
+      <div class="ps-row"><span class="ps-lbl">Min stock level</span><span class="ps-val mono">${selectedItem.minStock.toLocaleString()} ${selectedItem.unit}</span></div>
+    </div>
+
+    <div class="preview-section">
+      <div class="ps-title">New batch</div>
+      <div class="ps-row"><span class="ps-lbl">Batch no.</span><span class="ps-val mono">${batch}</span></div>
+      <div class="ps-row"><span class="ps-lbl">Quantity</span><span class="ps-val green mono">${qty>0?'+'+qty.toLocaleString()+' '+selectedItem.unit:'—'}</span></div>
+      <div class="ps-row"><span class="ps-lbl">Expiry date</span><span class="ps-val ${expClass}">${expDisplay}</span></div>
+      <div class="ps-row"><span class="ps-lbl">Supplier</span><span class="ps-val">${supp}</span></div>
+      <div class="ps-row"><span class="ps-lbl">Invoice</span><span class="ps-val">${inv}</span></div>
+    </div>
+
+    <div class="preview-section">
+      <div class="ps-title">After saving</div>
+      <div class="ps-row"><span class="ps-lbl">Total batches</span><span class="ps-val">${selectedItem.batches.length+1} batches</span></div>
+      <div class="ps-row"><span class="ps-lbl">New total stock</span><span class="ps-val green mono">${newStock.toLocaleString()} ${selectedItem.unit}</span></div>
+      ${daysLeft&&daysLeft<90?'<div class="ps-row"><span class="ps-lbl">⚠ Expiry alert</span><span class="ps-val amber">Will trigger in '+daysLeft+'d</span></div>':''}
+    </div>
+  `;
+  foot.style.display = '';
+  document.getElementById('qr-id-text').textContent  = selectedItem.id + '-' + (batch||'BATCH');
+  document.getElementById('qr-name-text').textContent = selectedItem.name;
+}
+
+/* CONFIRM SCREEN */
+function buildConfirmScreen() {
+  if (!selectedItem) return;
+  const batchNo = document.getElementById('batchNo').value;
+  const qty     = document.getElementById('qty').value;
+  const unit    = document.getElementById('unit').value;
+  const mfgDate = document.getElementById('mfgDate').value;
+  const expiry  = document.getElementById('expiryDate').value;
+  const supp    = document.getElementById('supplierName').value;
+  const inv     = document.getElementById('invoiceNo').value;
+  const price   = document.getElementById('pricePerUnit').value;
+  const loc     = document.getElementById('storeLocation').value;
+
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+  const newStock = selectedItem.currentStock + (parseInt(qty)||0);
+
+  const rows = arr => arr.map(([l,v,cls]) =>
+    `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <span style="color:var(--text-dim)">${l}</span>
+      <span style="color:${cls||'var(--text)'};font-weight:500;text-align:right">${v}</span>
+    </div>`
+  ).join('');
+
+  document.getElementById('confirmItemSection').innerHTML = rows([
+    ['Item name', selectedItem.name],
+    ['Item ID', selectedItem.id],
+    ['Batch number', batchNo||'—', 'var(--mono)'],
+    ['Quantity', (parseInt(qty)||0).toLocaleString()+' '+unit, 'var(--green)'],
+    ['Mfg date', fmtDate(mfgDate)],
+    ['Expiry date', fmtDate(expiry)],
+    ['Store', loc],
+    ['Stock change', selectedItem.currentStock.toLocaleString()+' → '+newStock.toLocaleString()+' '+unit, 'var(--green)'],
+  ]);
+
+  document.getElementById('confirmSupplierSection').innerHTML = rows([
+    ['Supplier', supp||'—'],
+    ['Invoice no.', inv||'—'],
+    ['Invoice date', fmtDate(document.getElementById('invoiceDate').value)],
+    ['Price per unit', price ? '₹'+parseFloat(price).toLocaleString() : '—'],
+    ['Total value', price&&qty ? '₹'+(parseFloat(price)*(parseInt(qty)||0)).toLocaleString() : '—'],
+    ['Received by', document.getElementById('receivedBy').value],
+  ]);
+
+  document.getElementById('stockChangeDesc').textContent =
+    `${selectedItem.name} stock will increase from ${selectedItem.currentStock.toLocaleString()} to ${newStock.toLocaleString()} ${unit}.`;
+  document.getElementById('batchAddDesc').textContent =
+    `Batch ${batchNo} will be added as batch #${selectedItem.batches.length+1} for this item.`;
+  document.getElementById('expiryTrackDesc').textContent = expiry
+    ? `Alert will fire ${Math.round((new Date(expiry)-new Date())/86400000)} days from now (${fmtDate(expiry)}).`
+    : 'No expiry tracked for this item (CAPEX asset).';
+}
+
+/* SAVE */
+function saveGRN() {
+  goStep(4);
+  document.getElementById('stepsBar').style.display = 'none';
+  const batchNo = document.getElementById('batchNo').value;
+  const qty     = parseInt(document.getElementById('qty').value)||0;
+  document.getElementById('successMsg').textContent =
+    `GRN-2025-0024 saved. ${selectedItem.name} stock increased by ${qty.toLocaleString()} ${selectedItem.unit}. `+
+    `Batch ${batchNo} is now tracked with FEFO ordering.`;
+}
+
+function resetAll() {
+  selectedItem = null;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('selectedItem').style.display = 'none';
+  document.getElementById('nextBtn1').disabled = true;
+  ['batchNo','qty','mfgDate','expiryDate','supplierName','invoiceNo','invoiceDate','pricePerUnit','notes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('batchWarn').classList.remove('show');
+  document.getElementById('fefoPreview').style.display = 'none';
+  document.getElementById('shelfLifeDisplay').innerHTML = '';
+  document.getElementById('stockAfterHint').textContent = '';
+  document.getElementById('stepsBar').style.display = 'flex';
+  switchTabDirect('new');
+  goStep(1);
+}
+
+function switchTabDirect(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach((t,i)=>{ t.classList.toggle('active', (i===0&&tab==='new')||(i===1&&tab==='history')); });
+}
+
+function printQR() { alert('Sending QR label to printer…'); }
+
+/* HISTORY */
+function renderHistory() {
+  const tbody = document.getElementById('historyBody');
+  tbody.innerHTML = GRN_HISTORY.map(r => `
+    <tr>
+      <td class="grn-mono">${r.grn}</td>
+      <td class="grn-mono">${new Date(r.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</td>
+      <td style="font-weight:500">${r.item}</td>
+      <td><span class="grn-badge ${r.cat==='OPEX'?'gb-opex':'gb-capex'}">${r.cat}</span></td>
+      <td class="grn-mono">${r.batch}</td>
+      <td class="grn-mono" style="color:var(--green)">${r.qty}</td>
+      <td>${r.supplier}</td>
+      <td class="grn-mono">${r.invoice}</td>
+      <td style="color:var(--text-dim)">${r.by}</td>
+    </tr>
+  `).join('');
+}
+
+/* INIT */
+document.addEventListener('DOMContentLoaded', () => {
+  goStep(1);
+});
+</script>
+</body>
+</html>

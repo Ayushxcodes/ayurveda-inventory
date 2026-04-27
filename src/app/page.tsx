@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 const BarChart = dynamic(() => import('../components/charts/BarChart'), { ssr: false });
 const OpexDashboard = dynamic(() => import('../components/OpexDashboard'), { ssr: false });
 const CapexDashboard = dynamic(() => import('../components/CapexDashboard'), { ssr: false });
+const AllItemsDashboard = dynamic(() => import('../components/AllItemsDashboard'), { ssr: false });
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'ALL'|'CAPEX'|'OPEX'>('CAPEX');
@@ -82,7 +83,9 @@ export default function Home() {
         </div>
 
         <div className="content">
-          {activeTab === 'OPEX' ? (
+          {activeTab === 'ALL' ? (
+            <AllItemsDashboard />
+          ) : activeTab === 'OPEX' ? (
             <OpexDashboard />
           ) : (
             <CapexDashboard />

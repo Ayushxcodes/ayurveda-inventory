@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AyurVaidya — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#f1f4f1;--surface:#ffffff;--surface-2:#f8faf8;
+  --border:#dce8dc;--border-2:#c8d8c8;
+  --green:#1A6B3C;--green-mid:#2D7A52;--green-light:#eaf3ee;--green-xl:#3aa864;
+  --blue:#185FA5;--blue-light:#e8f1fb;
+  --red:#B91C1C;--red-light:#fef2f2;
+  --amber:#92400E;--amber-light:#fffbeb;
+  --slate:#3d5a6c;--slate-light:#eef4f8;
+  --text:#0d1f12;--text-mid:#3d6148;--text-dim:#7a9982;--text-mute:#a8bfac;
+  --mono:'DM Mono',monospace;--sans:'Sora',sans-serif;--serif:'Playfair Display',serif;
+  --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;
+}
+
+body{font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex}
+
+/* ── Sidebar ───────────────────────────────────────── */
+.sidebar{width:204px;min-width:204px;background:var(--green);display:flex;flex-direction:column;height:100vh;position:relative;overflow:hidden}
+.sidebar::after{content:'';position:absolute;bottom:-80px;right:-80px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.03);pointer-events:none}
+.logo-area{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.logo-name{font-family:var(--serif);font-size:22px;color:#fff;letter-spacing:-0.3px;line-height:1.05;margin-bottom:4px}
+.logo-sub{font-size:10px;color:rgba(255,255,255,0.42);line-height:1.55;font-weight:300}
+.logo-pill{display:inline-block;margin-top:8px;padding:2px 8px;border:1px solid rgba(255,255,255,0.18);border-radius:20px;font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.45);letter-spacing:0.4px}
+.nav-section{padding:12px 0 4px}
+.nav-label{font-size:9px;font-weight:600;color:rgba(255,255,255,0.28);letter-spacing:1.2px;text-transform:uppercase;padding:0 16px 6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;font-size:12.5px;color:rgba(255,255,255,0.58);cursor:pointer;border-left:2px solid transparent;transition:background 0.12s,color 0.12s}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:#fff}
+.nav-item.active{background:rgba(255,255,255,0.12);color:#fff;border-left-color:rgba(255,255,255,0.65);font-weight:500}
+.nav-icon{width:26px;height:26px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(255,255,255,0.07);flex-shrink:0}
+.nav-item.active .nav-icon{background:rgba(255,255,255,0.14)}
+.nav-chip{margin-left:auto;font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:20px;background:rgba(220,38,38,0.22);color:#fca5a5;border:1px solid rgba(220,38,38,0.22)}
+.nav-chip.amber{background:rgba(245,158,11,0.18);color:#fcd34d;border-color:rgba(245,158,11,0.22)}
+.sidebar-user{margin-top:auto;padding:14px 16px;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px}
+.avatar{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0}
+.user-name{font-size:11.5px;color:#fff;font-weight:500}
+.user-role{font-size:10px;color:rgba(255,255,255,0.38)}
+
+/* ── Main ──────────────────────────────────────────── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100vh}
+
+/* ── Topbar ────────────────────────────────────────── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:14px}
+.page-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.2px}
+.breadcrumb{font-size:12px;color:var(--text-dim)}
+.breadcrumb span{color:var(--text-mid)}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.status-pill{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--green-mid);padding:4px 10px;background:var(--green-light);border:1px solid rgba(26,107,60,0.18);border-radius:20px}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--green-xl);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(58,168,100,0.35)}50%{box-shadow:0 0 0 4px rgba(58,168,100,0)}}
+.date-chip{font-family:var(--mono);font-size:11px;color:var(--text-dim);padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm)}
+.icon-btn{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text-dim);position:relative;transition:border-color 0.15s,color 0.15s}
+.icon-btn:hover{border-color:var(--green);color:var(--green)}
+.notif-badge{position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:var(--red);border-radius:50%;font-size:8px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface)}
+
+/* ── Tab bar ───────────────────────────────────────── */
+.tab-bar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 22px;flex-shrink:0}
+.tab{padding:11px 20px;font-size:12.5px;cursor:pointer;color:var(--text-dim);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s}
+.tab:hover{color:var(--text-mid)}
+.tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:500}
+
+/* ── Content ───────────────────────────────────────── */
+.content{flex:1;overflow-y:auto;padding:18px 22px 24px;background:var(--bg)}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:2px}
+
+/* ── Stat strip ────────────────────────────────────── */
+.stat-strip{display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;margin-bottom:14px;animation:fadeUp 0.35s ease both}
+.stat-sep{background:var(--border)}
+.stat-cell{padding:18px 22px;text-align:center}
+.stat-val{font-family:var(--mono);font-size:30px;font-weight:500;color:var(--text);line-height:1;margin-bottom:5px}
+.stat-lbl{font-size:12px;color:var(--text-dim);margin-bottom:9px}
+.tag-row{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.tag{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:500}
+.tag-blue{background:var(--blue-light);color:var(--blue);border:1px solid rgba(24,95,165,0.18)}
+.tag-green{background:var(--green-light);color:var(--green);border:1px solid rgba(26,107,60,0.18)}
+.tag-red{background:var(--red-light);color:var(--red);border:1px solid rgba(185,28,28,0.18)}
+.tag-amber{background:var(--amber-light);color:var(--amber);border:1px solid rgba(146,64,14,0.18)}
+.tag-slate{background:var(--slate-light);color:var(--slate);border:1px solid rgba(61,90,108,0.18)}
+
+/* ── Attention card ────────────────────────────────── */
+.attention-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;margin-bottom:14px;animation:fadeUp 0.38s ease 0.06s both}
+.attention-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border)}
+.attention-title{font-size:13px;font-weight:500;color:var(--text)}
+.attention-sub{font-size:11.5px;color:var(--text-dim)}
+.attention-grid{display:grid;grid-template-columns:repeat(4,1fr)}
+.attn-col{padding:16px 18px;border-right:1px solid var(--border)}
+.attn-col:last-child{border-right:none}
+.attn-col.danger-bg{background:rgba(185,28,28,0.025)}
+.attn-big{font-family:var(--mono);font-size:26px;font-weight:500;line-height:1;margin-bottom:4px}
+.attn-lbl{font-size:11px;color:var(--text-dim);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.attn-list{display:flex;flex-direction:column;gap:7px}
+.attn-row{display:flex;align-items:center;gap:7px;font-size:11.5px}
+.dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.dot-red{background:var(--red)}.dot-amber{background:var(--amber)}.dot-blue{background:var(--blue)}
+.attn-name{color:var(--text);flex:1}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-family:var(--mono);font-size:10px;font-weight:500;white-space:nowrap}
+.pill-red{background:var(--red-light);color:var(--red);border:1px solid rgba(185,28,28,0.15)}
+.pill-amber{background:var(--amber-light);color:var(--amber);border:1px solid rgba(146,64,14,0.15)}
+.pill-green{background:var(--green-light);color:var(--green);border:1px solid rgba(26,107,60,0.15)}
+.pill-blue{background:var(--blue-light);color:var(--blue);border:1px solid rgba(24,95,165,0.15)}
+.pill-slate{background:var(--slate-light);color:var(--slate);border:1px solid rgba(61,90,108,0.15)}
+.attn-more{font-size:10.5px;color:var(--text-mute);padding-left:12px;font-style:italic;margin-top:2px}
+.danger-notice{margin-top:10px;padding:7px 10px;border-radius:var(--r-sm);background:var(--red-light);border:1px solid rgba(185,28,28,0.18);font-size:10.5px;color:var(--red);line-height:1.4}
+
+/* ── Bottom panels ─────────────────────────────────── */
+.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;animation:fadeUp 0.38s ease 0.12s both}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;display:flex;flex-direction:column}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-title{font-size:12px;font-weight:500;color:var(--text-mid)}
+.view-link{font-family:var(--mono);font-size:10px;color:var(--blue);cursor:pointer;opacity:0.75;text-decoration:none}
+.view-link:hover{opacity:1;text-decoration:underline}
+.panel-body{padding:16px;flex:1}
+
+/* Health bars */
+.health-block{margin-bottom:15px}
+.health-label-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:11.5px}
+.health-label-left{display:flex;align-items:center;gap:6px;color:var(--text-mid)}
+.cat-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.health-status{font-size:11px;font-weight:500}
+.health-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--border);gap:1px;margin-bottom:7px}
+.hb{height:100%}
+.health-legend{display:flex;gap:12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-dim)}
+.legend-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.health-divider{height:1px;background:var(--border);margin:14px 0}
+.mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mini-stat{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;text-align:center}
+.mini-val{font-family:var(--mono);font-size:18px;font-weight:500;line-height:1;margin-bottom:3px}
+.mini-lbl{font-size:10px;color:var(--text-dim)}
+
+/* Activity feed */
+.activity-list{display:flex;flex-direction:column}
+.act-row{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+.act-row:last-child{border-bottom:none}
+.act-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px}
+.act-icon.green{background:var(--green-light)}.act-icon.blue{background:var(--blue-light)}.act-icon.red{background:var(--red-light)}.act-icon.amber{background:var(--amber-light)}
+.act-content{flex:1}
+.act-title{font-size:12px;color:var(--text);margin-bottom:2px;line-height:1.4}
+.act-detail{font-size:10.5px;color:var(--text-dim);line-height:1.4}
+.act-time{font-family:var(--mono);font-size:10px;color:var(--text-mute);white-space:nowrap;margin-top:3px}
+
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ─────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="logo-area">
+    <div class="logo-name">AyurVaidya</div>
+    <div class="logo-sub">All India Institute of<br>Ayurveda, Faridabad</div>
+    <div class="logo-pill">AIIA · AYUSH</div>
+  </div>
+  <nav>
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <div class="nav-item active"><div class="nav-icon">▦</div>Dashboard</div>
+      <div class="nav-item"><div class="nav-icon">☰</div>Item Registry</div>
+      <div class="nav-item"><div class="nav-icon">↓</div>Stock Inward</div>
+      <div class="nav-item"><div class="nav-icon">↑</div>Stock Issue</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Insights</div>
+      <div class="nav-item"><div class="nav-icon">⚑</div>Alerts<span class="nav-chip">22</span></div>
+      <div class="nav-item"><div class="nav-icon">≡</div>Reports</div>
+      <div class="nav-item"><div class="nav-icon">✦</div>AI Assistant</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Category</div>
+      <div class="nav-item"><div class="nav-icon" style="color:#93c5fd">◈</div>CAPEX items<span class="nav-chip amber">3 AMC</span></div>
+      <div class="nav-item"><div class="nav-icon" style="color:#86efac">◉</div>OPEX items<span class="nav-chip">7</span></div>
+    </div>
+  </nav>
+  <div class="sidebar-user">
+    <div class="avatar">RK</div>
+    <div><div class="user-name">Ramesh Kumar</div><div class="user-role">Store Manager</div></div>
+  </div>
+</aside>
+
+<!-- ── MAIN ──────────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="page-title">Dashboard</div>
+      <div class="breadcrumb">/ <span>Overview</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill"><div class="pulse"></div>System online</div>
+      <div class="date-chip">21 Apr 2025</div>
+      <div class="icon-btn">🔔<div class="notif-badge">7</div></div>
+      <div class="icon-btn">⚙</div>
+    </div>
+  </header>
+
+  <div class="tab-bar">
+    <div class="tab active">All items</div>
+    <div class="tab">CAPEX only</div>
+    <div class="tab">OPEX only</div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── Stat strip ─────────────────────────────────────────────────── -->
+    <div class="stat-strip">
+      <div class="stat-cell">
+        <div class="stat-val">248</div>
+        <div class="stat-lbl">Total items in system</div>
+        <div class="tag-row">
+          <span class="tag tag-blue">80 CAPEX</span>
+          <span class="tag tag-green">168 OPEX</span>
+        </div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat-cell">
+        <div class="stat-val" style="color:var(--red)">22</div>
+        <div class="stat-lbl">Active alerts right now</div>
+        <div class="tag-row">
+          <span class="tag tag-red">7 expiry</span>
+          <span class="tag tag-amber">12 low stock</span>
+          <span class="tag tag-blue">3 AMC due</span>
+        </div>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat-cell">
+        <div class="stat-val" style="color:var(--green)">23</div>
+        <div class="stat-lbl">GRN entries this month</div>
+        <div class="tag-row">
+          <span class="tag tag-green">61 issues</span>
+          <span class="tag tag-slate">₹4.2L received</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Needs attention ───────────────────────────────────────────── -->
+    <div class="attention-card">
+      <div class="attention-head">
+        <div class="attention-title">Needs attention right now</div>
+        <div class="attention-sub">Items requiring action — across both CAPEX and OPEX</div>
+      </div>
+      <div class="attention-grid">
+
+        <!-- Expiring -->
+        <div class="attn-col">
+          <div class="attn-big" style="color:var(--red)">7</div>
+          <div class="attn-lbl">Expiring in 30 days</div>
+          <div class="attn-list">
+            <div class="attn-row"><div class="dot dot-red"></div><span class="attn-name">Neem Tail</span><span class="pill pill-red">12 days</span></div>
+            <div class="attn-row"><div class="dot dot-red"></div><span class="attn-name">Haritaki Churna</span><span class="pill pill-red">18 days</span></div>
+            <div class="attn-row"><div class="dot dot-red"></div><span class="attn-name">Chyawanprash</span><span class="pill pill-red">27 days</span></div>
+            <div class="attn-more">+4 more → OPEX tab</div>
+          </div>
+        </div>
+
+        <!-- Low stock -->
+        <div class="attn-col">
+          <div class="attn-big" style="color:var(--amber)">12</div>
+          <div class="attn-lbl">Low stock — reorder needed</div>
+          <div class="attn-list">
+            <div class="attn-row"><div class="dot dot-amber"></div><span class="attn-name">Cotton Bandages</span><span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-left:auto">21%</span></div>
+            <div class="attn-row"><div class="dot dot-amber"></div><span class="attn-name">Surgical Gloves (M)</span><span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-left:auto">15%</span></div>
+            <div class="attn-row"><div class="dot dot-amber"></div><span class="attn-name">Triphala Churna</span><span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-left:auto">24%</span></div>
+            <div class="attn-more">+9 more → OPEX tab</div>
+          </div>
+        </div>
+
+        <!-- AMC due -->
+        <div class="attn-col">
+          <div class="attn-big" style="color:var(--blue)">3</div>
+          <div class="attn-lbl">AMC renewals due (60 days)</div>
+          <div class="attn-list">
+            <div class="attn-row"><div class="dot dot-blue"></div><span class="attn-name">AC Unit — OPD Rm 3</span><span class="pill pill-red">38d</span></div>
+            <div class="attn-row"><div class="dot dot-blue"></div><span class="attn-name">BP Monitor — Ward B</span><span class="pill pill-amber">52d</span></div>
+            <div class="attn-row"><div class="dot dot-blue"></div><span class="attn-name">Water Purifier — Pharm.</span><span class="pill pill-amber">58d</span></div>
+            <div class="attn-more">Full list → CAPEX tab</div>
+          </div>
+        </div>
+
+        <!-- Expired -->
+        <div class="attn-col danger-bg">
+          <div class="attn-big" style="color:var(--red)">2</div>
+          <div class="attn-lbl">Already expired — dispose now</div>
+          <div class="attn-list">
+            <div class="attn-row"><div class="dot dot-red"></div><span class="attn-name">Neem Tail</span><span style="font-size:10px;color:var(--red);font-family:var(--mono);margin-left:auto">3d ago</span></div>
+            <div class="attn-row"><div class="dot dot-red"></div><span class="attn-name">Haritaki Churna (B2)</span><span style="font-size:10px;color:var(--red);font-family:var(--mono);margin-left:auto">1d ago</span></div>
+          </div>
+          <div class="danger-notice">Dispose per AYUSH guidelines immediately. Log disposal in system.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Bottom panels ──────────────────────────────────────────────── -->
+    <div class="bottom-row">
+
+      <!-- Inventory health -->
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Inventory health — overall status</span>
+          <a class="view-link">View all alerts →</a>
+        </div>
+        <div class="panel-body">
+
+          <div class="health-block">
+            <div class="health-label-row">
+              <div class="health-label-left"><div class="cat-dot" style="background:var(--blue)"></div><span>CAPEX — 80 items</span></div>
+              <span class="health-status" style="color:var(--green)">Good overall</span>
+            </div>
+            <div class="health-bar">
+              <div class="hb" style="width:70%;background:var(--green)"></div>
+              <div class="hb" style="width:26%;background:var(--amber)"></div>
+              <div class="hb" style="width:4%;background:var(--red)"></div>
+            </div>
+            <div class="health-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>56 healthy</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>21 AMC within 90d</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>3 AMC critical</div>
+            </div>
+          </div>
+
+          <div class="health-block">
+            <div class="health-label-row">
+              <div class="health-label-left"><div class="cat-dot" style="background:var(--green)"></div><span>OPEX — 168 items</span></div>
+              <span class="health-status" style="color:var(--amber)">Attention needed</span>
+            </div>
+            <div class="health-bar">
+              <div class="hb" style="width:75%;background:var(--green)"></div>
+              <div class="hb" style="width:7%;background:var(--amber)"></div>
+              <div class="hb" style="width:13%;background:rgba(185,28,28,0.6)"></div>
+              <div class="hb" style="width:5%;background:var(--red)"></div>
+            </div>
+            <div class="health-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>126 healthy</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>12 low stock</div>
+              <div class="legend-item"><div class="legend-dot" style="background:rgba(185,28,28,0.6)"></div>7 expiring</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>2 expired</div>
+            </div>
+          </div>
+
+          <div class="health-divider"></div>
+
+          <div class="mini-stats">
+            <div class="mini-stat"><div class="mini-val" style="color:var(--green)">182</div><div class="mini-lbl">healthy items</div></div>
+            <div class="mini-stat"><div class="mini-val" style="color:var(--amber)">64</div><div class="mini-lbl">need attention</div></div>
+            <div class="mini-stat"><div class="mini-val" style="color:var(--red)">2</div><div class="mini-lbl">expired — act now</div></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Activity feed -->
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Recent activity</span>
+          <a class="view-link">View full log →</a>
+        </div>
+        <div class="panel-body" style="padding:0 16px">
+          <div class="activity-list">
+
+            <div class="act-row">
+              <div class="act-icon green">↓</div>
+              <div class="act-content">
+                <div class="act-title">GRN recorded — Brahmi Tail <span class="pill pill-green" style="margin-left:4px">10,000 ml</span></div>
+                <div class="act-detail">Rajiv Ayurvedic Supplies · Batch BT-2024-089 · Exp: May 2026</div>
+              </div>
+              <div class="act-time">2h ago</div>
+            </div>
+
+            <div class="act-row">
+              <div class="act-icon red">⚑</div>
+              <div class="act-content">
+                <div class="act-title">Alert — Neem Tail expiry <span class="pill pill-red" style="margin-left:4px">12 days</span></div>
+                <div class="act-detail">320 ml remaining · Shalakya Tantra dept</div>
+              </div>
+              <div class="act-time">5h ago</div>
+            </div>
+
+            <div class="act-row">
+              <div class="act-icon green">↑</div>
+              <div class="act-content">
+                <div class="act-title">Stock issued — Ashwagandha Churna <span class="pill pill-green" style="margin-left:4px">500 g</span></div>
+                <div class="act-detail">Issued to Pharmacy Counter · Dr. S. Verma · 21 Apr</div>
+              </div>
+              <div class="act-time">Yesterday</div>
+            </div>
+
+            <div class="act-row">
+              <div class="act-icon blue">📋</div>
+              <div class="act-content">
+                <div class="act-title">AMC alert — AC Unit OPD Room 3 <span class="pill pill-red" style="margin-left:4px">38 days</span></div>
+                <div class="act-detail">Cool Air Services · Contact vendor for renewal</div>
+              </div>
+              <div class="act-time">Yesterday</div>
+            </div>
+
+            <div class="act-row">
+              <div class="act-icon amber">↓</div>
+              <div class="act-content">
+                <div class="act-title">GRN recorded — Cotton Bandages <span class="pill pill-amber" style="margin-left:4px">500 rolls</span></div>
+                <div class="act-detail">MedPlus Supplies · Still below minimum — reorder more</div>
+              </div>
+              <div class="act-time">2 days ago</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
