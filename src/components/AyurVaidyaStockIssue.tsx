@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import StepsBar from "./stock-issue/StepsBar";
+import ItemBadges from "./stock-issue/ItemBadges";
+import PreviewPanel from "./stock-issue/PreviewPanel";
+import ConfirmContent from "./stock-issue/ConfirmContent";
 
 /* ── TYPES ───────────────────────────────────────────────── */
 interface Batch {
@@ -551,238 +555,8 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
       )
     : [];
 
-  /* ── STEP INDICATORS ────────────────────────────────────── */
-  function StepsBar() {
-    const steps = [
-      { n: 1, label: "Find item" },
-      { n: 2, label: "Select batch & quantity" },
-      { n: 3, label: "Issue details" },
-      { n: 4, label: "Confirm & issue" },
-    ];
-    return (
-      <div className="steps-bar" id="stepsBar">
-        {steps.map((s, idx) => {
-          const state = s.n < currentStep ? "done" : s.n === currentStep ? "active" : "idle";
-          return (
-            <div key={s.n} style={{ display: "flex", alignItems: "center", flex: idx < steps.length - 1 ? "1" : "0" }}>
-              <div className="step-item">
-                <div className={`step-num ${state}`}>{state === "done" ? "✓" : s.n}</div>
-                <div className={`step-label ${state}`}>{s.label}</div>
-              </div>
-              {idx < steps.length - 1 && (
-                <div className="step-line" style={{ flex: 1 }}>
-                  <div className="step-line-fill" style={{ width: s.n < currentStep ? "100%" : "0%" }} />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  /* ── ITEM BADGES ─────────────────────────────────────────── */
-  function ItemBadges({ item, extra }: { item: Item; extra?: React.ReactNode }) {
-    const stockStatus = item.totalStock <= item.minStock ? "badge-warn" : "badge-ok";
-    return (
-      <div className="si-badges">
-        <span className={`badge ${item.category === "CAPEX" ? "badge-capex" : "badge-opex"}`}>{item.category}</span>
-        <span className="badge badge-sub">{item.subcat}</span>
-        <span className={`badge ${stockStatus}`}>{item.totalStock.toLocaleString()} {item.unit} in stock</span>
-        {extra}
-      </div>
-    );
-  }
-
-  /* ── PREVIEW PANEL ──────────────────────────────────────── */
-  function PreviewPanel() {
-    if (!selectedItem) {
-      return (
-        <div className="preview-empty">
-          <div className="pe-icon">↑</div>
-          <div style={{ fontSize: 12, lineHeight: 1.6 }}>Select an item, batch and quantity to see what will be deducted</div>
-        </div>
-      );
-    }
-
-    const previewNewTotal = selectedItem.totalStock - qtyInt;
-    const previewBatchLeft = (selectedBatch?.qty ?? 0) - qtyInt;
-    const newCls = previewNewTotal < 0 ? "danger" : previewNewTotal < selectedItem.minStock ? "warn" : "ok";
-    const dept = selectedDept?.name ?? "—";
-    const auth = authorisedBy || "—";
-    const pur = purpose || "—";
-
-    return (
-      <>
-        <div className="stock-change-box">
-          <div className="scb-label">Stock after this issue</div>
-          <div className="scb-values">
-            <div className="scb-old">{selectedItem.totalStock.toLocaleString()}</div>
-            <div className="scb-arrow">→</div>
-            <div className={`scb-new ${newCls}`}>{previewNewTotal.toLocaleString()}</div>
-          </div>
-          <div className="scb-unit">{selectedItem.unit}</div>
-          {qtyInt > 0 && (
-            <div className="scb-diff">−{qtyInt.toLocaleString()} {selectedItem.unit}</div>
-          )}
-        </div>
-
-        <div className="preview-section">
-          <div className="ps-title">Item</div>
-          {[
-            ["Name", selectedItem.name, ""],
-            ["Category", `${selectedItem.category} · ${selectedItem.subcat}`, ""],
-            ["Dept", selectedItem.dept, ""],
-            ["Current stock", `${selectedItem.totalStock.toLocaleString()} ${selectedItem.unit}`, "mono"],
-            ["Min stock level", `${selectedItem.minStock.toLocaleString()} ${selectedItem.unit}`, "mono"],
-          ].map(([lbl, val, cls]) => (
-            <div className="ps-row" key={lbl}>
-              <span className="ps-lbl">{lbl}</span>
-              <span className={`ps-val ${cls}`}>{val}</span>
-            </div>
-          ))}
-        </div>
-
-        {selectedBatch && (
-          <div className="preview-section">
-            <div className="ps-title">Selected batch</div>
-            <div className="ps-row"><span className="ps-lbl">Batch no.</span><span className="ps-val mono">{selectedBatch.batchNo}</span></div>
-            <div className="ps-row"><span className="ps-lbl">Available</span><span className="ps-val mono">{selectedBatch.qty.toLocaleString()} {selectedItem.unit}</span></div>
-            <div className="ps-row"><span className="ps-lbl">Issuing</span><span className="ps-val red mono">{qtyInt > 0 ? `−${qtyInt.toLocaleString()} ${selectedItem.unit}` : "—"}</span></div>
-            <div className="ps-row">
-              <span className="ps-lbl">Remaining</span>
-              <span className={`ps-val ${previewBatchLeft < 0 ? "red" : previewBatchLeft < 20 ? "amber" : "green"} mono`}>
-                {previewBatchLeft.toLocaleString()} {selectedItem.unit}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {(dept !== "—" || auth !== "—" || pur !== "—") && (
-          <div className="preview-section">
-            <div className="ps-title">Issue details</div>
-            {dept !== "—" && <div className="ps-row"><span className="ps-lbl">Department</span><span className="ps-val">{dept}</span></div>}
-            {auth !== "—" && <div className="ps-row"><span className="ps-lbl">Authorised by</span><span className="ps-val">{auth}</span></div>}
-            {pur !== "—" && <div className="ps-row"><span className="ps-lbl">Purpose</span><span className="ps-val">{pur}</span></div>}
-          </div>
-        )}
-
-        {qtyInt > 0 && previewNewTotal < selectedItem.minStock && (
-          <div style={{ background: "var(--amber-light)", border: "1px solid rgba(146,64,14,0.2)", borderRadius: "var(--r-md)", padding: "9px 11px", fontSize: 11.5, color: "var(--amber)" }}>
-            ⚠ After this issue, stock falls below the minimum level of {selectedItem.minStock.toLocaleString()} {selectedItem.unit}. Raise a purchase request.
-          </div>
-        )}
-      </>
-    );
-  }
-
-  /* ── CONFIRM SCREEN ─────────────────────────────────────── */
-  function ConfirmContent() {
-    if (!selectedItem) return null;
-    const qty = qtyInt;
-    const batch = selectedBatch?.batchNo ?? "—";
-    const dept = selectedDept?.name ?? "—";
-    const auth = authorisedBy || "—";
-    const pur = purpose || "—";
-    const loc = specificLocation || "—";
-    const patId = patientId || "—";
-    const confirmNewTotal = selectedItem.totalStock - qty;
-    const confirmBatchLeft = (selectedBatch?.qty ?? 0) - qty;
-
-    type Row = [string, string, string?];
-
-    const itemRows: Row[] = [
-      ["Item name", selectedItem.name],
-      ["Item ID", selectedItem.id],
-      ["Batch", batch],
-      ["Quantity issued", `${qty.toLocaleString()} ${selectedItem.unit}`],
-      ["Remaining in batch", `${confirmBatchLeft.toLocaleString()} ${selectedItem.unit}`],
-      ["Total stock after", `${confirmNewTotal.toLocaleString()} ${selectedItem.unit}`],
-    ];
-    const detailRows: Row[] = [
-      ["Department", dept],
-      ["Location", loc],
-      ["Authorised by", auth],
-      ["Purpose", pur],
-      ["Patient / ref ID", patId],
-      ["Issue date", fmtDate(issueDate)],
-    ];
-
-    function rowColor(label: string, value: string): string | undefined {
-      if (label === "Quantity issued") return "var(--red)";
-      if (label === "Remaining in batch") return confirmBatchLeft < 0 ? "var(--red)" : "var(--green)";
-      if (label === "Total stock after") return confirmNewTotal < selectedItem!.minStock ? "var(--amber)" : "var(--green)";
-      return undefined;
-    }
-
-    const newTotalOK = confirmNewTotal >= selectedItem.minStock;
-
-    return (
-      <>
-        <div className="confirm-two-col">
-          <div>
-            <div className="confirm-section-title">Item &amp; batch</div>
-            {itemRows.map(([lbl, val]) => (
-              <div className="confirm-row" key={lbl}>
-                <span className="cr-lbl">{lbl}</span>
-                <span className="cr-val" style={{ color: rowColor(lbl, val) }}>{val}</span>
-              </div>
-            ))}
-          </div>
-          <div>
-            <div className="confirm-section-title">Issue details</div>
-            {detailRows.map(([lbl, val]) => (
-              <div className="confirm-row" key={lbl}>
-                <span className="cr-lbl">{lbl}</span>
-                <span className="cr-val">{val}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Consequences */}
-        <div className="form-card" style={{ marginTop: 16, borderColor: "rgba(26,107,60,0.3)", animationDelay: "0.08s" }}>
-          <div className="fc-head" style={{ background: "var(--green-light)" }}>
-            <div className="fc-title" style={{ color: "var(--green)" }}>What happens when you confirm</div>
-          </div>
-          <div className="fc-body">
-            <div className="consequence-list">
-              <div className="consequence-item">
-                <div className="cons-num">1</div>
-                <div>
-                  <strong style={{ color: "var(--text)" }}>Stock deducted immediately</strong><br />
-                  <span style={{ color: "var(--text-dim)" }}>{selectedItem.name} drops from {selectedItem.totalStock.toLocaleString()} to {confirmNewTotal.toLocaleString()} {selectedItem.unit}</span>
-                </div>
-              </div>
-              <div className="consequence-item">
-                <div className="cons-num">2</div>
-                <div>
-                  <strong style={{ color: "var(--text)" }}>Batch {batch} updated</strong><br />
-                  <span style={{ color: "var(--text-dim)" }}>Remaining in batch: {confirmBatchLeft.toLocaleString()} {selectedItem.unit}{confirmBatchLeft === 0 ? " — batch fully consumed, will be retired" : ""}</span>
-                </div>
-              </div>
-              <div className="consequence-item">
-                <div className={`cons-num ${newTotalOK ? "" : "warn"}`}>3</div>
-                <div>
-                  <strong style={{ color: "var(--text)" }}>Issue log entry created</strong><br />
-                  <span style={{ color: "var(--text-dim)" }}>Logged to {dept} · Authorised by {auth} · For: {pur}</span>
-                </div>
-              </div>
-              {!newTotalOK && (
-                <div className="consequence-item">
-                  <div className="cons-num warn">⚠</div>
-                  <div>
-                    <strong style={{ color: "var(--amber)" }}>Low stock alert will fire</strong><br />
-                    <span style={{ color: "var(--text-dim)" }}>After this issue, stock ({confirmNewTotal.toLocaleString()} {selectedItem.unit}) falls below minimum ({selectedItem.minStock.toLocaleString()} {selectedItem.unit}). Raise a purchase request.</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
+  // StepsBar, ItemBadges, PreviewPanel and ConfirmContent have been moved
+  // to src/components/stock-issue/*.tsx and are imported at the top of this file.
 
   /* ── RENDER ─────────────────────────────────────────────── */
   const mainContent = (
@@ -798,7 +572,7 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
           </div>
 
           {/* Steps bar */}
-          {activeTab === "new" && currentStep < 5 && <StepsBar />}
+          {activeTab === "new" && currentStep < 5 && <StepsBar currentStep={currentStep} />}
 
           {/* Content */}
           <div className="content" style={{ display: 'flex', width: '100%', gap: 16, flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -1130,7 +904,17 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                           <span style={{ fontSize: 11, color: "var(--text-dim)" }}>Issue voucher # auto-generated on save</span>
                         </div>
                         <div className="fc-body">
-                          <ConfirmContent />
+                          <ConfirmContent
+                            selectedItem={selectedItem}
+                            qty={qtyInt}
+                            batch={selectedBatch?.batchNo ?? "—"}
+                            dept={selectedDept?.name ?? "—"}
+                            auth={authorisedBy || "—"}
+                            pur={purpose || "—"}
+                            loc={specificLocation || "—"}
+                            patId={patientId || "—"}
+                            issueDateFormatted={fmtDate(issueDate)}
+                          />
                         </div>
                       </div>
 
@@ -1165,7 +949,14 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                 <div className="pp-sub">Updates as you fill the form</div>
               </div>
               <div className="pp-body">
-                <PreviewPanel />
+                <PreviewPanel
+                  selectedItem={selectedItem}
+                  selectedBatch={selectedBatch}
+                  qtyInt={qtyInt}
+                  selectedDept={selectedDept?.name ?? null}
+                  authorisedBy={authorisedBy}
+                  purpose={purpose}
+                />
               </div>
             </div>
           </div>
