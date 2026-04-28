@@ -1,26 +1,11 @@
 import { useState, useEffect, useRef } from "react";
+import PreviewSection from "./grn/PreviewSection";
+import FefoPreview from "./grn/FefoPreview";
+import SearchResults from "./grn/SearchResults";
+import SelectedItemCard from "./grn/SelectedItemCard";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
-interface Batch {
-  batchNo: string;
-  qty: number;
-  expiry: string | null;
-  amcExpiry?: string;
-}
-
-interface Item {
-  id: string;
-  name: string;
-  sub: string;
-  category: "OPEX" | "CAPEX";
-  subcat: string;
-  unit: string;
-  dept: string;
-  currentStock: number;
-  minStock: number;
-  batches: Batch[];
-}
+import { Item, Batch } from "../types/items";
 
 interface GRNRecord {
   grn: string;
@@ -417,37 +402,13 @@ export default function AyurVaidyaGRN() {
 
                         {/* Search results dropdown */}
                         {showResults && searchResults.length > 0 && (
-                          <div className="search-results">
-                            {searchResults.map((item) => (
-                              <div key={item.id} className="sr-item" onClick={() => selectItem(item)}>
-                                <div>
-                                  <div className="sr-name">{item.name}</div>
-                                  <div className="sr-sub">{item.sub} · {item.dept}</div>
-                                </div>
-                                <div className="sr-right">
-                                  <div className="sr-stock">{item.currentStock.toLocaleString()} {item.unit}</div>
-                                  <div className="sr-cat">{item.category} · {item.subcat}</div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                          <SearchResults results={searchResults} onSelect={selectItem} />
                         )}
                       </div>
 
                       {/* Selected item display */}
                       {selectedItem && (
-                        <div className="selected-item">
-                          <div className="si-info">
-                            <div className="si-name">{selectedItem.name}</div>
-                            <div className="si-sub">{selectedItem.id} · {selectedItem.sub}</div>
-                            <div className="si-badges">
-                              <span className={`badge ${selectedItem.category === "CAPEX" ? "badge-capex" : "badge-opex"}`}>{selectedItem.category}</span>
-                              <span className="badge badge-sub">{selectedItem.subcat}</span>
-                              <span className="badge badge-sub">{selectedItem.currentStock.toLocaleString()} {selectedItem.unit} in stock</span>
-                            </div>
-                          </div>
-                          <span className="si-change" onClick={clearItem}>Change item</span>
-                        </div>
+                        <SelectedItemCard item={selectedItem} onChange={clearItem} />
                       )}
                     </div>
                   </div>
@@ -465,18 +426,7 @@ export default function AyurVaidyaGRN() {
               {activeTab === "new" && currentStep === 2 && selectedItem && (
                 <div>
                   {/* Item reminder */}
-                  <div className="selected-item" style={{ marginBottom: 0, cursor: "default" }}>
-                    <div className="si-info">
-                      <div className="si-name">{selectedItem.name}</div>
-                      <div className="si-sub">{selectedItem.id} · {selectedItem.sub}</div>
-                      <div className="si-badges">
-                        <span className={`badge ${selectedItem.category === "CAPEX" ? "badge-capex" : "badge-opex"}`}>{selectedItem.category}</span>
-                        <span className="badge badge-sub">{selectedItem.subcat}</span>
-                        <span className="badge badge-sub">{selectedItem.currentStock.toLocaleString()} {selectedItem.unit} current stock</span>
-                      </div>
-                    </div>
-                    <span className="si-change" onClick={() => goStep(1)}>← Change item</span>
-                  </div>
+                  <SelectedItemCard item={selectedItem} onChange={() => goStep(1)} style={{ marginBottom: 0, cursor: "default" }} changeLabel="← Change item" />
 
                   {/* Batch & quantity card */}
                   <div className="form-card anim-in" style={{ animationDelay: "0.04s" }}>
@@ -545,22 +495,7 @@ export default function AyurVaidyaGRN() {
 
                       {/* FEFO preview */}
                       {fefoList.length > 0 && (
-                        <div style={{ marginBottom: 14 }}>
-                          <div className="fefo-preview">
-                            <div className="fefo-title">📋 FEFO dispatch order after this GRN</div>
-                            <div className="fefo-list">
-                              {fefoList.map((b, i) => (
-                                <div key={b.batchNo + i} className="fefo-row">
-                                  <div className={`fefo-pos ${b.isNew ? "new" : ""}`}>{i + 1}</div>
-                                  <div className="fefo-name">{b.batchNo} — {b.qty.toLocaleString()} {selectedItem.unit}</div>
-                                  <div className="fefo-exp">{b.expiry ? fmtDate(b.expiry) : "No expiry"}</div>
-                                  {i === 0 && !b.isNew && <span className="fefo-tag fefo">FEFO</span>}
-                                  {b.isNew && <span className="fefo-tag new-b">NEW</span>}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
+                        <FefoPreview fefoList={fefoList} unit={selectedItem.unit} />
                       )}
                     </div>
                   </div>
@@ -805,22 +740,7 @@ export default function AyurVaidyaGRN() {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function PreviewSection({ title, rows }: {
-  title: string;
-  rows: [string, string, string?][];
-}) {
-  return (
-    <div className="preview-section">
-      <div className="ps-title">{title}</div>
-      {rows.map(([lbl, val, cls = ""]) => (
-        <div key={lbl} className="ps-row">
-          <span className="ps-lbl">{lbl}</span>
-          <span className={`ps-val ${cls}`}>{val}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+
 
 // ─── CSS ─────────────────────────────────────────────────────────────────────
 
