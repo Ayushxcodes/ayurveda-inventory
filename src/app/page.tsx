@@ -44,7 +44,7 @@ export default function Home() {
         <nav>
           <div className="nav-block">
             <div className="nav-label">Main</div>
-            <div className={`nav-item ${(activeTab as any) !== 'REG' && (activeTab as any) !== 'GRN' && (activeTab as any) !== 'ISS' ? 'active' : ''}`}><div className="nav-icon">▦</div> Dashboard</div>
+            <div className={`nav-item ${(activeTab as any) !== 'REG' && (activeTab as any) !== 'GRN' && (activeTab as any) !== 'ISS' ? 'active' : ''}`} onClick={() => setActiveTab('CAPEX')}><div className="nav-icon">▦</div> Dashboard</div>
             <div className={`nav-item ${(activeTab as any) === 'REG' ? 'active' : ''}`} onClick={()=>setActiveTab('REG')}><div className="nav-icon">☰</div> Item Registry</div>
             <div className={`nav-item ${(activeTab as any) === 'GRN' ? 'active' : ''}`} onClick={() => setActiveTab('GRN')}><div className="nav-icon">↓</div> Stock Inward</div>
             <div className={`nav-item ${activeTab==='ISS'?'active':''}`} onClick={() => setActiveTab('ISS')}><div className="nav-icon">↑</div> Stock Issue</div>
@@ -90,17 +90,19 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="tab-bar">
-          {activeTab === 'ISS' ? (
-            <div className={`tab active`} style={{ flex: 1, textAlign: 'center' }}>Stock Issue</div>
-          ) : (
-            <>
-              <div className={`tab ${activeTab==='ALL'?'active':''}`} onClick={()=>setActiveTab('ALL')}>All items</div>
-              <div className={`tab ${activeTab==='CAPEX'?'active':''}`} onClick={()=>setActiveTab('CAPEX')}>CAPEX only</div>
-              <div className={`tab ${activeTab==='OPEX'?'active':''}`} onClick={()=>setActiveTab('OPEX')}>OPEX only</div>
-            </>
-          )}
-        </div>
+        {activeTab !== 'GRN' && activeTab !== 'REG' && (
+          <div className="tab-bar">
+            {activeTab === 'ISS' ? (
+              <div className={`tab active`} style={{ flex: 1, textAlign: 'center' }}>Stock Issue</div>
+            ) : (
+              <>
+                <div className={`tab ${activeTab==='ALL'?'active':''}`} onClick={()=>setActiveTab('ALL')}>All items</div>
+                <div className={`tab ${activeTab==='CAPEX'?'active':''}`} onClick={()=>setActiveTab('CAPEX')}>CAPEX only</div>
+                <div className={`tab ${activeTab==='OPEX'?'active':''}`} onClick={()=>setActiveTab('OPEX')}>OPEX only</div>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="content">
           {activeTab === 'ISS' ? (
