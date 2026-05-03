@@ -6,6 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "seed": "node prisma/seed.js",
+    "seed:dashboard": "node prisma/seed-dashboard.js",
+    "seed:sql": "node prisma/seed-sql.js",
     "lint": "eslint"
   },
   "dependencies": {
