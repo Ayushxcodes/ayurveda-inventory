@@ -110,7 +110,7 @@ export default function Home() {
           {activeTab === 'ISS' ? (
             <AyurVaidyaStockIssue />
           ) : activeTab === 'GRN' ? (
-            <AyurVaidyaGRN view={grnView} setView={setGrnView} />
+            <AyurVaidyaGRN />
           ) : activeTab === 'REG' ? (
             <RegistryDashboard />
           ) : activeTab === 'ALL' ? (

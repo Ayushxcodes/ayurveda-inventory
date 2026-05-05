@@ -122,7 +122,9 @@ export default function AyurVaidyaGRN() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
-  const [successGRNId] = useState("GRN-2025-0024");
+  const [successGRNId, setSuccessGRNId] = useState("");
+  const [grnHistory, setGrnHistory] = useState<GRNRecord[]>([]);
+  const [remoteResults, setRemoteResults] = useState<Item[]>([]);
 
   const [form, setForm] = useState<FormState>({
     batchNo: "", qty: "", unit: "ml", mfgDate: "", expiryDate: "",
@@ -144,17 +146,121 @@ export default function AyurVaidyaGRN() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Fetch GRN history when user views history tab
+  useEffect(() => {
+    if (activeTab !== "history") return;
+    let mounted = true;
+    fetch('/api/grn')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!mounted) return;
+        if (Array.isArray(data)) setGrnHistory(data as GRNRecord[])
+      })
+      .catch(() => {})
+    return () => { mounted = false }
+  }, [activeTab]);
+
+  // Debounced server-side search for items
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) {
+      setRemoteResults([]);
+      return;
+    }
+    let mounted = true;
+    const t = setTimeout(() => {
+      fetch(`/api/items?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!mounted) return;
+          if (Array.isArray(data)) setRemoteResults(data as Item[])
+        })
+        .catch(() => {
+          if (mounted) setRemoteResults([])
+        })
+    }, 300);
+    return () => { mounted = false; clearTimeout(t) }
+  }, [searchQuery]);
+
+  const handleSave = async () => {
+    if (!selectedItem) return;
+    const payload = {
+      itemCode: selectedItem.id,
+      batchNo: form.batchNo,
+      qty: Number(form.qty || 0),
+      unit: form.unit,
+      mfgDate: form.mfgDate || null,
+      expiryDate: form.expiryDate || null,
+      supplierName: form.supplierName || null,
+      invoiceNo: form.invoiceNo || null,
+      invoiceDate: form.invoiceDate || null,
+      pricePerUnit: form.pricePerUnit || null,
+      storeLocation: form.storeLocation || null,
+      receivedBy: form.receivedBy || null,
+      notes: form.notes || null,
+    }
+
+    try {
+      const res = await fetch('/api/grn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const data = await res.json()
+        if (res.ok && data.grn) {
+        setSuccessGRNId(data.grn)
+
+        // If server returned updated item, map and set it locally
+        if (data.item) {
+          try {
+            const it = data.item
+            const mapped: Item = {
+              id: it.itemCode || selectedItem.id,
+              name: it.itemName || selectedItem.name,
+              sub: it.itemType || selectedItem?.sub || '',
+              category: it.category || selectedItem?.category || 'OPEX',
+              subcat: it.subCategory || selectedItem?.subcat || '',
+              unit: it.unit || selectedItem?.unit || form.unit,
+              dept: '',
+              currentStock: Array.isArray(it.itemBatches)
+                ? it.itemBatches.reduce((s: number, b: any) => s + Number(b.quantityAvailable ?? b.quantityReceived ?? 0), 0)
+                : selectedItem.currentStock,
+              minStock: Number(it.minStockLevel || selectedItem?.minStock || 0),
+              batches: Array.isArray(it.itemBatches)
+                ? it.itemBatches.map((b: any) => ({ batchNo: b.batchNumber, qty: Number(b.quantityAvailable ?? b.quantityReceived ?? 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null }))
+                : selectedItem.batches,
+            }
+            setSelectedItem(mapped)
+          } catch (e) {}
+        }
+
+        // If server returned grnEntry, prepend it to history for immediate visibility
+        if (data.grnEntry) {
+          try {
+            const r = data.grnEntry
+            const row: GRNRecord = {
+              grn: r.grnNumber || data.grn,
+              date: r.grnDate ? r.grnDate.split('T')[0] : new Date().toISOString().split('T')[0],
+              item: r.batchNumber ? r.batchNumber : (selectedItem?.name || ''),
+              cat: selectedItem?.category || 'OPEX',
+              batch: r.batchNumber || (form.batchNo || ''),
+              qty: `${r.quantityReceived || form.qty} ${r.unit || form.unit}`,
+              supplier: (r.supplier && r.supplier.supplierName) || (form.supplierName || ''),
+              invoice: r.invoiceNumber || form.invoiceNo || '',
+              by: (r.receiver && r.receiver.fullName) || (form.receivedBy || ''),
+            }
+            setGrnHistory((prev) => [row, ...prev].slice(0, 200))
+          } catch (e) {}
+        }
+
+        setCurrentStep(4)
+      } else {
+        alert('Failed to save GRN: ' + (data?.error || 'unknown'))
+      }
+    } catch (err) {
+      alert('Error saving GRN')
+    }
+  }
+
   // ── Derived state ─────────────────────────────────────────────────────────
 
-  const searchResults =
-    searchQuery.trim().length > 0
-      ? ITEMS_DB.filter(
-          (i) =>
-            i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            i.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            i.dept.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : [];
+  const searchResults = remoteResults;
 
   const qty = parseInt(form.qty) || 0;
   const price = parseFloat(form.pricePerUnit) || 0;
@@ -174,7 +280,7 @@ export default function AyurVaidyaGRN() {
   const batchExists =
     selectedItem && form.batchNo.trim()
       ? selectedItem.batches.some(
-          (b) => b.batchNo.toLowerCase() === form.batchNo.toLowerCase()
+          (b) => !!(b && b.batchNo) && b.batchNo.toLowerCase() === form.batchNo.toLowerCase()
         )
       : false;
 
@@ -255,6 +361,21 @@ export default function AyurVaidyaGRN() {
     return "idle";
   };
 
+  const validateStep2 = () => {
+    const errs: string[] = [];
+    if (!form.batchNo || !form.batchNo.trim()) errs.push('Batch number is required');
+    if (!form.qty || Number(form.qty) <= 0) errs.push('Quantity must be greater than zero');
+    if (form.expiryType !== 'none' && !form.expiryDate) errs.push('Expiry date is required');
+    if (!form.mfgDate) errs.push('Manufacturing date is required');
+    if (!form.supplierName || !form.supplierName.trim()) errs.push('Supplier name is required');
+    if (!form.invoiceNo || !form.invoiceNo.trim()) errs.push('Invoice / Challan number is required');
+    if (errs.length) {
+      alert(errs.join('\n'))
+      return false
+    }
+    return true
+  }
+
   // ── Confirm screen data ───────────────────────────────────────────────────
 
   const confirmRows = selectedItem
@@ -287,8 +408,6 @@ export default function AyurVaidyaGRN() {
       <style>{CSS}</style>
       <div className="ay-root">
 
-        {/* ── Sidebar ─────────────────────────────────────────────────── */}
-        
 
         {/* ── Main ────────────────────────────────────────────────────── */}
         <div className="main">
@@ -354,7 +473,7 @@ export default function AyurVaidyaGRN() {
                         </tr>
                       </thead>
                       <tbody>
-                        {GRN_HISTORY.map((r) => (
+                        {grnHistory.length > 0 ? grnHistory.map((r) => (
                           <tr key={r.grn}>
                             <td className="grn-mono">{r.grn}</td>
                             <td className="grn-mono">{fmtDate(r.date)}</td>
@@ -366,7 +485,9 @@ export default function AyurVaidyaGRN() {
                             <td className="grn-mono">{r.invoice}</td>
                             <td style={{ color: "var(--text-dim)" }}>{r.by}</td>
                           </tr>
-                        ))}
+                        )) : (
+                          <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 20 }}>No GRN records found</td></tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -572,7 +693,7 @@ export default function AyurVaidyaGRN() {
                   <div className="action-row">
                     <button className="btn-back" onClick={() => goStep(1)}>← Back</button>
                     <button className="btn-cancel" onClick={resetAll}>Cancel</button>
-                    <button className="btn-next" onClick={() => goStep(3)}>Next: Review &amp; confirm →</button>
+                    <button className="btn-next" onClick={() => { if (validateStep2()) goStep(3) }}>Next: Review &amp; confirm →</button>
                   </div>
                 </div>
               )}
@@ -637,7 +758,7 @@ export default function AyurVaidyaGRN() {
                   <div className="action-row">
                     <button className="btn-back" onClick={() => goStep(2)}>← Back</button>
                     <button className="btn-cancel" onClick={resetAll}>Cancel</button>
-                    <button className="btn-save" onClick={() => goStep(4)}>✓ Save GRN &amp; update stock</button>
+                    <button className="btn-save" onClick={handleSave}>✓ Save GRN &amp; update stock</button>
                   </div>
                 </div>
               )}
@@ -786,7 +907,7 @@ const CSS = `
 .u-role{font-size:10px;color:rgba(255,255,255,0.38)}
 
 /* Main */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100%}
+.main{flex:1;display:flex;flex-direction:column;overflow:auto;height:100%}
 
 /* Topbar */
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;flex-shrink:0}
@@ -821,7 +942,7 @@ const CSS = `
 .step-line-fill{position:absolute;left:0;top:0;height:100%;background:var(--green);border-radius:1px;transition:width 0.4s ease}
 
 /* Content area */
-.content{flex:1;display:flex;overflow:hidden}
+.content{flex:1;display:flex;overflow:visible}
 
 /* Left: form panel */
 .form-panel{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:18px}
@@ -829,7 +950,7 @@ const CSS = `
 .form-panel::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:2px}
 
 /* Right: preview panel */
-.preview-panel{width:300px;min-width:300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.preview-panel{width:300px;min-width:300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:auto;flex-shrink:0}
 .pp-head{padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
 .pp-title{font-size:12px;font-weight:500;color:var(--text-mid)}
 .pp-sub{font-size:11px;color:var(--text-mute);margin-top:2px}
@@ -858,7 +979,7 @@ const CSS = `
 .scan-btn:hover{background:var(--green-mid)}
 
 /* Search results dropdown */
-.search-results{position:absolute;top:100%;left:0;right:80px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.1);z-index:100;animation:slideUp 0.18s ease}
+.search-results{position:absolute;top:100%;left:0;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,0.12);z-index:9999;animation:slideUp 0.18s ease}
 .sr-item{padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);transition:background 0.1s}
 .sr-item:last-child{border-bottom:none}
 .sr-item:hover{background:var(--green-light)}
