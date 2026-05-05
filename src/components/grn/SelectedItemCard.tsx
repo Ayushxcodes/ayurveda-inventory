@@ -1,9 +1,10 @@
 import React from "react";
 import { Item } from "../../types/items";
 
-export default function SelectedItemCard({ item, onChange, style, changeLabel = "Change item" }: {
+export default function SelectedItemCard({ item, onChange, onClear, style, changeLabel = "Change item" }: {
   item: Item;
-  onChange: () => void;
+  onChange?: () => void;
+  onClear?: () => void;
   style?: React.CSSProperties;
   changeLabel?: string;
 }) {
@@ -18,7 +19,7 @@ export default function SelectedItemCard({ item, onChange, style, changeLabel = 
           <span className="badge badge-sub">{item.currentStock.toLocaleString()} {item.unit} {style && style.cursor === "default" ? "current stock" : "in stock"}</span>
         </div>
       </div>
-      <span className="si-change" onClick={onChange}>{changeLabel}</span>
+      <span className="si-change" onClick={() => (onClear ? onClear() : onChange ? onChange() : undefined)}>{changeLabel}</span>
     </div>
   );
 }

@@ -14,6 +14,7 @@ const AyurVaidyaStockIssue = dynamic(() => import('../components/AyurVaidyaStock
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'ALL'|'CAPEX'|'OPEX'|'REG'|'GRN'|'ISS'>('CAPEX');
+  const [grnView, setGrnView] = useState<'grn'|'qr'>('grn');
 
   const breadcrumbLabel = activeTab === 'GRN'
     ? 'Stock Inward (GRN)'
@@ -46,7 +47,8 @@ export default function Home() {
             <div className="nav-label">Main</div>
             <div className={`nav-item ${(activeTab as any) !== 'REG' && (activeTab as any) !== 'GRN' && (activeTab as any) !== 'ISS' ? 'active' : ''}`} onClick={() => setActiveTab('CAPEX')}><div className="nav-icon">▦</div> Dashboard</div>
             <div className={`nav-item ${(activeTab as any) === 'REG' ? 'active' : ''}`} onClick={()=>setActiveTab('REG')}><div className="nav-icon">☰</div> Item Registry</div>
-            <div className={`nav-item ${(activeTab as any) === 'GRN' ? 'active' : ''}`} onClick={() => setActiveTab('GRN')}><div className="nav-icon">↓</div> Stock Inward</div>
+            <div className={`nav-item ${(activeTab as any) === 'GRN' ? 'active' : ''}`} onClick={() => { setActiveTab('GRN'); setGrnView('grn'); }}><div className="nav-icon">↓</div> Stock Inward</div>
+            <div className={`nav-item`} onClick={() => { setActiveTab('GRN'); setGrnView('qr'); }}><div className="nav-icon">▦</div> QR Generator</div>
             <div className={`nav-item ${activeTab==='ISS'?'active':''}`} onClick={() => setActiveTab('ISS')}><div className="nav-icon">↑</div> Stock Issue</div>
           </div>
 
@@ -108,7 +110,7 @@ export default function Home() {
           {activeTab === 'ISS' ? (
             <AyurVaidyaStockIssue />
           ) : activeTab === 'GRN' ? (
-            <AyurVaidyaGRN />
+            <AyurVaidyaGRN view={grnView} setView={setGrnView} />
           ) : activeTab === 'REG' ? (
             <RegistryDashboard />
           ) : activeTab === 'ALL' ? (

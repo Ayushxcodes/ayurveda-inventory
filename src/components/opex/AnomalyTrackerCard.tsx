@@ -10,6 +10,8 @@ const PRODUCTS = [
   {name:'Haritaki',color:'#3d5a6c',data:[95,110,80,130,340,90],unit:'g',note:'Mar usage (340g) was 2.6× the avg (141g). Unexpectedly high — check if stock was bulk issued or misrecorded.'}
 ];
 
+type Product = { name: string; color?: string; data: number[]; unit?: string; note?: string | null }
+
 function avg(arr:number[]){return Math.round(arr.reduce((a,b)=>a+b,0)/arr.length)}
 function isAnomaly(v:number,a:number){return v>a*1.5}
 
@@ -20,6 +22,7 @@ export default function AnomalyTrackerCard(){
   const footLeftRef = useRef<HTMLSpanElement | null>(null);
   const footRightRef = useRef<HTMLSpanElement | null>(null);
   const chartRef = useRef<any>(null);
+  const [products, setProducts] = useState<Product[]>([])
 
   useEffect(()=>{
     let mounted = true;
@@ -33,6 +36,18 @@ export default function AnomalyTrackerCard(){
         });
       }
       if (!mounted) return;
+      // fetch consumption data and render
+      try {
+        const resp = await fetch('/api/opex/consumption')
+        if (resp.ok) {
+          const data = await resp.json()
+          const prods: Product[] = (data || []).map((p:any, idx:number) => ({ name: p.name, color: p.color || ['#185FA5','#1A6B3C','#92400E','#78600A','#3d5a6c','#B91C1C'][idx%6], data: (p.data||[]).map((n:any)=>Number(n||0)), unit: p.unit || '', note: p.note || null }))
+          if (mounted) setProducts(prods)
+          if (mounted) render(prods[active] || PRODUCTS[active])
+          return
+        }
+      } catch(e){}
+      // fallback
       render(PRODUCTS[active]);
     };
     loadAndRender();
@@ -69,7 +84,7 @@ export default function AnomalyTrackerCard(){
       </div>
       <div className="card-body" style={{ padding: '12px 15px 10px' }}>
         <div className="product-tabs">
-          {PRODUCTS.map((p,i)=> (
+          {(products.length ? products : PRODUCTS).map((p,i)=> (
             <div key={p.name} className={`ptab ${i===active? 'active':''}`} style={i===active?{background:p.color,color:'#fff'}:{}} onClick={()=>setActive(i)}>{p.name}</div>
           ))}
         </div>

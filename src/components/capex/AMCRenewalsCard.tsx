@@ -1,6 +1,16 @@
 "use client";
 
-export default function AMCRenewalsCard(){
+type Row = { id: string; name: string; loc?: string | null; vendor?: string | null; days?: number | null }
+type Props = { rows: Row[]; total: number; expired: number }
+
+export default function AMCRenewalsCard({ rows, total, expired }: Props){
+  const pillFor = (d?: number | null) => {
+    if (d == null) return 'pill-pill'
+    if (d < 0) return 'pill pill-red'
+    if (d < 60) return 'pill pill-amber'
+    return 'pill pill-green'
+  }
+
   return (
     <div className="card">
       <div className="card-head"><span className="card-title">AMC renewals due</span><a className="view-link">View report →</a></div>
@@ -10,46 +20,21 @@ export default function AMCRenewalsCard(){
             <tr><th>Item &amp; location</th><th>Vendor</th><th style={{ textAlign: 'right' }}>Due in</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td>
-                <div className="item-name">AC Unit</div>
-                <div className="item-loc">OPD Room 3</div>
-                <div className="mini-bar-wrap"><div className="mini-bar-track"><div className="mini-bar-fill" style={{ width: '42%', background: '#E24B4A' }}></div></div></div>
-              </td>
-              <td><div className="vendor-txt">Cool Air Services</div></td>
-              <td style={{ textAlign: 'right' }}><span className="pill pill-red">38 days</span></td>
-            </tr>
-            <tr>
-              <td>
-                <div className="item-name">BP Monitor</div>
-                <div className="item-loc">Ward B</div>
-                <div className="mini-bar-wrap"><div className="mini-bar-track"><div className="mini-bar-fill" style={{ width: '58%', background: '#EF9F27' }}></div></div></div>
-              </td>
-              <td><div className="vendor-txt">MedEquip Co.</div></td>
-              <td style={{ textAlign: 'right' }}><span className="pill pill-amber">52 days</span></td>
-            </tr>
-            <tr>
-              <td>
-                <div className="item-name">Water Purifier</div>
-                <div className="item-loc">Pharmacy</div>
-                <div className="mini-bar-wrap"><div className="mini-bar-track"><div className="mini-bar-fill" style={{ width: '64%', background: '#EF9F27' }}></div></div></div>
-              </td>
-              <td><div className="vendor-txt">AquaCare Ltd.</div></td>
-              <td style={{ textAlign: 'right' }}><span className="pill pill-amber">58 days</span></td>
-            </tr>
-            <tr>
-              <td>
-                <div className="item-name">Geyser</div>
-                <div className="item-loc">IPD Ward A</div>
-                <div className="mini-bar-wrap"><div className="mini-bar-track"><div className="mini-bar-fill" style={{ width: '100%', background: 'var(--green)' }}></div></div></div>
-              </td>
-              <td><div className="vendor-txt">HeatPro Services</div></td>
-              <td style={{ textAlign: 'right' }}><span className="pill pill-green">90 days</span></td>
-            </tr>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td>
+                  <div className="item-name">{r.name}</div>
+                  <div className="item-loc">{r.loc || ''}</div>
+                  <div className="mini-bar-wrap"><div className="mini-bar-track"><div className="mini-bar-fill" style={{ width: `${Math.min(100, r.days ? Math.max(0, 100 - r.days) : 0)}%`, background: r.days && r.days < 30 ? '#E24B4A' : r.days && r.days < 60 ? '#EF9F27' : 'var(--green)' }}></div></div></div>
+                </td>
+                <td><div className="vendor-txt">{r.vendor || ''}</div></td>
+                <td style={{ textAlign: 'right' }}><span className={pillFor(r.days)}>{r.days == null ? '-' : `${r.days} days`}</span></td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
-      <div className="card-foot"><span className="foot-txt">Total AMC contracts &nbsp;<strong>18</strong></span><span className="foot-txt" style={{ color: 'var(--red)' }}>Already expired &nbsp;<strong>1</strong></span></div>
+      <div className="card-foot"><span className="foot-txt">Total AMC contracts &nbsp;<strong>{total}</strong></span><span className="foot-txt" style={{ color: 'var(--red)' }}>Already expired &nbsp;<strong>{expired}</strong></span></div>
     </div>
   );
 }
