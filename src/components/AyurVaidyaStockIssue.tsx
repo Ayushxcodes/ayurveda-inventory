@@ -43,67 +43,6 @@ interface IssueRecord {
   purpose: string;
 }
 
-/* ── DATA ───────────────────────────────────────────────── */
-const ITEMS_DB: Item[] = [
-  {
-    id: "MED-001", name: "Ashwagandha Churna", sub: "Rasayana · Churna",
-    category: "OPEX", subcat: "medicines", unit: "g", dept: "PHM",
-    totalStock: 5000, minStock: 1000,
-    batches: [
-      { batchNo: "ASH-2024-A1", qty: 3200, expiry: "2026-05-31", status: "healthy" },
-      { batchNo: "ASH-2025-B1", qty: 1800, expiry: "2027-01-14", status: "healthy" },
-    ],
-  },
-  {
-    id: "MED-003", name: "Brahmi Tail", sub: "Nervine · Tail",
-    category: "OPEX", subcat: "medicines", unit: "ml", dept: "PKM",
-    totalStock: 14500, minStock: 500,
-    batches: [
-      { batchNo: "BRT-2024-C1", qty: 4500, expiry: "2026-05-09", status: "healthy" },
-      { batchNo: "BRT-2025-D1", qty: 10000, expiry: "2027-01-31", status: "healthy" },
-    ],
-  },
-  {
-    id: "MED-004", name: "Haritaki Churna", sub: "Digestive · Churna",
-    category: "OPEX", subcat: "medicines", unit: "g", dept: "PHM",
-    totalStock: 1800, minStock: 800,
-    batches: [{ batchNo: "HAR-2024-D3", qty: 1800, expiry: "2025-03-19", status: "expiring" }],
-  },
-  {
-    id: "MED-010", name: "Guduchi Churna", sub: "Immunomodulator · Churna",
-    category: "OPEX", subcat: "medicines", unit: "g", dept: "KAY",
-    totalStock: 2500, minStock: 1000,
-    batches: [
-      { batchNo: "GUD-2024-J1", qty: 800, expiry: "2025-06-30", status: "expiring" },
-      { batchNo: "GUD-2024-J2", qty: 1700, expiry: "2025-11-30", status: "healthy" },
-    ],
-  },
-  {
-    id: "CON-001", name: "Cotton Bandage (2 inch)", sub: "Wound Care · Consumable",
-    category: "OPEX", subcat: "consumables", unit: "Rolls", dept: "PHM",
-    totalStock: 210, minStock: 1000,
-    batches: [{ batchNo: "JJ-CON-2024-01", qty: 210, expiry: null, status: "low_stock" }],
-  },
-  {
-    id: "CON-004", name: "Surgical Gloves (M)", sub: "PPE · Consumable",
-    category: "OPEX", subcat: "consumables", unit: "Pairs", dept: "PHM",
-    totalStock: 45, minStock: 200,
-    batches: [{ batchNo: "ANS-2024-M01", qty: 45, expiry: "2025-12-31", status: "low_stock" }],
-  },
-  {
-    id: "DEV-001", name: "Digital BP Monitor (Adult)", sub: "Diagnostic · Omron HEM-7120",
-    category: "CAPEX", subcat: "devices", unit: "Pcs", dept: "KAY",
-    totalStock: 4, minStock: 2,
-    batches: [{ batchNo: "OM-SN-001", qty: 4, expiry: null, amcExpiry: "2026-03-14", status: "healthy" }],
-  },
-  {
-    id: "ELC-005", name: "Split AC 1.5 Ton", sub: "Air Conditioning · Daikin",
-    category: "CAPEX", subcat: "electrical", unit: "Pcs", dept: "KAY",
-    totalStock: 2, minStock: 1,
-    batches: [{ batchNo: "DK-AC-001", qty: 2, expiry: null, amcExpiry: "2025-06-14", status: "amc_due" }],
-  },
-];
-
 const DEPTS: Dept[] = [
   { name: "OPD — General", code: "OPD-GEN" }, { name: "Pharmacy", code: "PHM" },
   { name: "IPD Ward A", code: "IPD-A" },      { name: "IPD Ward B", code: "IPD-B" },
@@ -113,14 +52,7 @@ const DEPTS: Dept[] = [
   { name: "Swastha Vritta", code: "SWA" },     { name: "Research", code: "RES" },
 ];
 
-const ISSUE_HISTORY: IssueRecord[] = [
-  { iss: "ISS-2025-0061", date: "2025-04-21", item: "Brahmi Tail", cat: "OPEX", batch: "BRT-2024-C1", qty: "500 ml", dept: "Panchakarma", auth: "Dr. R. Sharma", purpose: "Panchakarma therapy" },
-  { iss: "ISS-2025-0060", date: "2025-04-20", item: "Ashwagandha Churna", cat: "OPEX", batch: "ASH-2024-A1", qty: "1,000 g", dept: "Pharmacy", auth: "Dr. S. Verma", purpose: "Patient dispensing — OPD" },
-  { iss: "ISS-2025-0059", date: "2025-04-18", item: "Guduchi Churna", cat: "OPEX", batch: "GUD-2024-J1", qty: "200 g", dept: "OPD — General", auth: "Dr. R. Sharma", purpose: "Patient dispensing — OPD" },
-  { iss: "ISS-2025-0058", date: "2025-04-17", item: "Cotton Bandage (2 inch)", cat: "OPEX", batch: "JJ-CON-2024-01", qty: "50 Rolls", dept: "Shalya (Surgery)", auth: "Dr. K. Singh", purpose: "Department restocking" },
-  { iss: "ISS-2025-0057", date: "2025-04-15", item: "Surgical Gloves (M)", cat: "OPEX", batch: "ANS-2024-M01", qty: "20 Pairs", dept: "IPD Ward A", auth: "Sr. Nurse Meena", purpose: "Patient dispensing — IPD" },
-  { iss: "ISS-2025-0056", date: "2025-04-14", item: "Digital BP Monitor", cat: "CAPEX", batch: "OM-SN-001", qty: "1 Pcs", dept: "OPD — General", auth: "Dr. S. Verma", purpose: "Department restocking" },
-];
+// Issue history will be fetched from the server when the history tab is opened
 
 /* ── HELPERS ─────────────────────────────────────────────── */
 function fefoSort(item: Item): Batch[] {
@@ -431,6 +363,8 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   const [issueDate, setIssueDate] = useState("2025-04-21");
   const [notes, setNotes] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [remoteResults, setRemoteResults] = useState<Item[]>([]);
+  const [issueHistory, setIssueHistory] = useState<IssueRecord[]>([]);
 
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -491,12 +425,28 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   }
 
   function selectItemById(id: string) {
-    const item = ITEMS_DB.find((i) => i.id === id) ?? null;
-    setSelectedItem(item);
-    if (item) {
-      setSearchQuery(item.name);
-      setShowSearchResults(false);
-    }
+    // fetch detail from server
+    fetch(`/api/items/detail?code=${encodeURIComponent(id)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && !data.error) {
+          const mapped: Item = {
+            id: data.itemCode,
+            name: data.itemName,
+            sub: data.itemType || '',
+            category: data.category || 'OPEX',
+            subcat: data.subCategory || '',
+            unit: data.unit || 'pcs',
+            dept: '',
+            totalStock: Array.isArray(data.itemBatches) ? data.itemBatches.reduce((s: number, b: any) => s + Number(b.quantityAvailable || b.quantityReceived || 0), 0) : 0,
+            minStock: Number(data.minStockLevel || 0),
+            batches: Array.isArray(data.itemBatches) ? data.itemBatches.map((b: any) => ({ batchNo: b.batchNumber, qty: Number(b.quantityAvailable || b.quantityReceived || 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null })) : [],
+          }
+          setSelectedItem(mapped)
+          setSearchQuery(mapped.name)
+          setShowSearchResults(false)
+        }
+      }).catch(() => {})
   }
 
   function clearItem() {
@@ -521,11 +471,35 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   }
 
   function saveIssue() {
-    const dept = selectedDept?.name ?? "—";
-    setSuccessMsg(
-      `ISS-2025-0062 recorded. ${qtyInt.toLocaleString()} ${selectedItem?.unit} of ${selectedItem?.name} issued to ${dept}. Issue voucher is ready to print.`
-    );
-    setCurrentStep(5);
+    // call API to persist issue
+    if (!selectedItem || !selectedBatch) { alert('Select item and batch'); return }
+    const payload = {
+      itemCode: selectedItem.id,
+      batchNo: selectedBatch.batchNo,
+      qty: Number(issueQty || 0),
+      deptCode: selectedDept?.code || null,
+      authorisedBy: authorisedBy || null,
+      issuedBy: '',
+      purpose: purpose || null,
+      specificLocation: specificLocation || null,
+      notes: notes || null,
+    }
+    fetch('/api/issue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.ok && data.issue) {
+          const dept = selectedDept?.name ?? "—";
+          setSuccessMsg(`ISS-${String(data.issue.issueId || data.issue.issue_id || 'XXXX')} recorded. ${qtyInt.toLocaleString()} ${selectedItem.unit} of ${selectedItem.name} issued to ${dept}.`)
+          // update local selectedBatch qty
+          if (data.batch) {
+            setSelectedBatch((prev) => prev ? { ...prev, qty: Number(data.batch.quantityAvailable ?? data.batch.quantity_available ?? prev.qty) } : prev)
+            setSelectedItem((it) => it ? { ...it, totalStock: (it.totalStock - qtyInt), batches: it.batches.map((b) => b.batchNo === selectedBatch.batchNo ? { ...b, qty: Number(data.batch.quantityAvailable ?? data.batch.quantity_available ?? b.qty) } : b) } : it)
+          }
+          setCurrentStep(5)
+        } else {
+          alert('Failed to save issue: ' + (data?.error || 'unknown'))
+        }
+      }).catch(() => alert('Error saving issue'))
   }
 
   function resetAll() {
@@ -547,13 +521,50 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   }
 
   /* ── SEARCH RESULTS ─────────────────────────────────────── */
-  const searchMatches = searchQuery.trim()
-    ? ITEMS_DB.filter(
-        (i) =>
-          i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          i.id.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
+  // Use only server results when typing — avoid local static fallback
+  const searchMatches = searchQuery.trim() ? remoteResults : [];
+
+  // Debounced server-side search for items
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) { setRemoteResults([]); return }
+    let mounted = true;
+    const t = setTimeout(() => {
+      fetch(`/api/items?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!mounted) return;
+          if (!Array.isArray(data)) { setRemoteResults([]); return }
+          // Map server shape to local Item shape (server returns `currentStock`, `minStock`, `batches`)
+          const mapped = data.map((it: any): Item => ({
+            id: it.id,
+            name: it.name,
+            sub: it.sub || '',
+            category: it.category || 'OPEX',
+            subcat: it.subcat || '',
+            unit: it.unit || '',
+            dept: it.dept || '',
+            totalStock: Number(it.currentStock ?? it.stock ?? 0),
+            minStock: Number(it.minStock ?? it.min_stock_level ?? 0),
+            batches: Array.isArray(it.batches) ? it.batches.map((b: any) => ({ batchNo: b.batchNo || b.batch_number, qty: Number(b.qty || b.quantity || b.qty_sum || 0), expiry: b.expiry || null })) : [],
+          }))
+          setRemoteResults(mapped)
+        })
+        .catch(() => { if (mounted) setRemoteResults([]) })
+    }, 250)
+    return () => { mounted = false; clearTimeout(t) }
+  }, [searchQuery]);
+
+  // Fetch issue history when user switches to history tab
+  useEffect(() => {
+    if (activeTab !== 'history') return;
+    let mounted = true;
+    fetch('/api/issue')
+      .then((r) => r.json())
+      .then((data) => { if (!mounted) return; if (Array.isArray(data)) setIssueHistory(data as IssueRecord[]) })
+      .catch(() => { if (mounted) setIssueHistory([]) });
+    return () => { mounted = false }
+  }, [activeTab]);
 
   // StepsBar, ItemBadges, PreviewPanel and ConfirmContent have been moved
   // to src/components/stock-issue/*.tsx and are imported at the top of this file.
@@ -597,8 +608,8 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                           <th>Authorised by</th><th>Purpose</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {ISSUE_HISTORY.map((r) => (
+                          <tbody>
+                        {issueHistory.length > 0 ? issueHistory.map((r) => (
                           <tr key={r.iss}>
                             <td className="hist-mono">{r.iss}</td>
                             <td className="hist-mono">{new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
@@ -610,7 +621,9 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                             <td>{r.auth}</td>
                             <td style={{ color: "var(--text-dim)" }}>{r.purpose}</td>
                           </tr>
-                        ))}
+                        )) : (
+                          <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 20 }}>No issue records found</td></tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -652,7 +665,13 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                                   <div
                                     key={item.id}
                                     className={`sr-item${isOOS ? " oos" : ""}`}
-                                    onClick={() => !isOOS && selectItemById(item.id)}
+                                    onMouseDown={(e) => {
+                                      // use onMouseDown so selection happens before document mousedown closes dropdown
+                                      e.preventDefault();
+                                      if (!isOOS) selectItemById(item.id);
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
                                   >
                                     <div>
                                       <div className="sr-name">{item.name}</div>

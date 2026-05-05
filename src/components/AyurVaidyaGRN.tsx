@@ -35,67 +35,7 @@ interface FormState {
   notes: string;
 }
 
-// ─── Data ────────────────────────────────────────────────────────────────────
-
-const ITEMS_DB: Item[] = [
-  {
-    id: "MED-001", name: "Ashwagandha Churna", sub: "Rasayana · Churna",
-    category: "OPEX", subcat: "medicines", unit: "g", dept: "PHM",
-    currentStock: 5000, minStock: 1000,
-    batches: [
-      { batchNo: "ASH-2024-A1", qty: 3200, expiry: "2026-05-31" },
-      { batchNo: "ASH-2025-B1", qty: 1800, expiry: "2027-01-14" },
-    ],
-  },
-  {
-    id: "MED-003", name: "Brahmi Tail", sub: "Nervine · Tail",
-    category: "OPEX", subcat: "medicines", unit: "ml", dept: "PKM",
-    currentStock: 14500, minStock: 500,
-    batches: [
-      { batchNo: "BRT-2024-C1", qty: 4500, expiry: "2026-05-09" },
-      { batchNo: "BRT-2025-D1", qty: 10000, expiry: "2027-01-31" },
-    ],
-  },
-  {
-    id: "MED-004", name: "Haritaki Churna", sub: "Digestive · Churna",
-    category: "OPEX", subcat: "medicines", unit: "g", dept: "PHM",
-    currentStock: 1800, minStock: 800,
-    batches: [{ batchNo: "HAR-2024-D3", qty: 1800, expiry: "2025-03-19" }],
-  },
-  {
-    id: "MED-010", name: "Guduchi Churna", sub: "Immunomodulator · Churna",
-    category: "OPEX", subcat: "medicines", unit: "g", dept: "KAY",
-    currentStock: 2500, minStock: 1000,
-    batches: [
-      { batchNo: "GUD-2024-J1", qty: 800, expiry: "2025-06-30" },
-      { batchNo: "GUD-2024-J2", qty: 1700, expiry: "2025-11-30" },
-    ],
-  },
-  {
-    id: "CON-001", name: "Cotton Bandage (2 inch)", sub: "Wound Care · Consumable",
-    category: "OPEX", subcat: "consumables", unit: "Rolls", dept: "PHM",
-    currentStock: 210, minStock: 1000,
-    batches: [{ batchNo: "JJ-CON-2024-01", qty: 210, expiry: null }],
-  },
-  {
-    id: "CON-004", name: "Surgical Gloves (M)", sub: "PPE · Consumable",
-    category: "OPEX", subcat: "consumables", unit: "Pairs", dept: "PHM",
-    currentStock: 45, minStock: 200,
-    batches: [{ batchNo: "ANS-2024-M01", qty: 45, expiry: "2025-12-31" }],
-  },
-  {
-    id: "DEV-001", name: "Digital BP Monitor (Adult)", sub: "Diagnostic · Omron HEM-7120",
-    category: "CAPEX", subcat: "devices", unit: "Pcs", dept: "KAY",
-    currentStock: 4, minStock: 2,
-    batches: [{ batchNo: "OM-SN-001", qty: 4, expiry: null, amcExpiry: "2026-03-14" }],
-  },
-  {
-    id: "ELC-005", name: "Split AC 1.5 Ton", sub: "Air Conditioning · Daikin FTKR50",
-    category: "CAPEX", subcat: "electrical", unit: "Pcs", dept: "KAY",
-    currentStock: 2, minStock: 1,
-    batches: [{ batchNo: "DK-AC-001", qty: 2, expiry: null, amcExpiry: "2025-06-14" }],
-  },
-];
+// Items are fetched from the server; remove local ITEMS_DB mock
 
 const GRN_HISTORY: GRNRecord[] = [
   { grn: "GRN-2025-0023", date: "2025-04-21", item: "Brahmi Tail", cat: "OPEX", batch: "BRT-2025-D1", qty: "10,000 ml", supplier: "Kottakkal AVS", invoice: "INV-2025-0044", by: "Ramesh Kumar" },
@@ -328,8 +268,25 @@ export default function AyurVaidyaGRN() {
   };
 
   const simulateScan = () => {
-    const item = ITEMS_DB.find((i) => i.id === "MED-003")!;
-    selectItem(item);
+    // Fetch item detail from server instead of using local mock
+    fetch(`/api/items/detail?code=${encodeURIComponent("MED-003")}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data || data.error) return;
+        const mapped: Item = {
+          id: data.itemCode,
+          name: data.itemName,
+          sub: data.itemType || '',
+          category: data.category || 'OPEX',
+          subcat: data.subCategory || '',
+          unit: data.unit || 'ml',
+          dept: '',
+          currentStock: Array.isArray(data.itemBatches) ? data.itemBatches.reduce((s: number, b: any) => s + Number(b.quantityAvailable ?? b.quantityReceived ?? 0), 0) : 0,
+          minStock: Number(data.minStockLevel || 0),
+          batches: Array.isArray(data.itemBatches) ? data.itemBatches.map((b: any) => ({ batchNo: b.batchNumber, qty: Number(b.quantityAvailable ?? b.quantityReceived ?? 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null })) : [],
+        }
+        selectItem(mapped)
+      }).catch(() => {})
   };
 
   const resetAll = () => {
