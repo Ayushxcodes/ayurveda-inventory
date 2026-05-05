@@ -92,8 +92,30 @@ export default function DetailPanel({ item, onClose }: { item: Item | null | "ne
         <div className="dp-body">{renderBody()}</div>
         <div className="dp-actions">
           <div className="dp-btn" onClick={onClose}>Close</div>
-          <div className="dp-btn" onClick={() => alert("Opening Stock Issue for: " + (item !== "new" && item ? item.name : "new item"))}>Issue stock</div>
-          <div className="dp-btn primary" onClick={() => alert("Opening Stock Inward for: " + (item !== "new" && item ? item.name : "new item"))}>Record GRN</div>
+          <div
+            className="dp-btn"
+            onClick={() => {
+              try {
+                const id = item !== "new" && item ? item.id : null;
+                window.dispatchEvent(new CustomEvent('open-issue', { detail: id }));
+              } catch (e) {}
+              onClose();
+            }}
+          >
+            Issue stock
+          </div>
+          <div
+            className="dp-btn primary"
+            onClick={() => {
+              try {
+                const id = item !== "new" && item ? item.id : null;
+                window.dispatchEvent(new CustomEvent('open-grn', { detail: id }));
+              } catch (e) {}
+              onClose();
+            }}
+          >
+            Record GRN
+          </div>
         </div>
       </div>
     </div>

@@ -555,6 +555,19 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
     return () => { mounted = false; clearTimeout(t) }
   }, [searchQuery]);
 
+  // If another panel requested opening Stock Issue for a specific item, consume it now
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem('openItemForISS')
+      if (pending) {
+        sessionStorage.removeItem('openItemForISS')
+        selectItemById(pending)
+        setActiveTab('new')
+        setCurrentStep(1)
+      }
+    } catch (e) {}
+  }, [])
+
   // Fetch issue history when user switches to history tab
   useEffect(() => {
     if (activeTab !== 'history') return;

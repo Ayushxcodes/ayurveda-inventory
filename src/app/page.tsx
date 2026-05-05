@@ -30,6 +30,31 @@ export default function Home() {
     // placeholder: Chart components will initialize later
   }, []);
 
+  // Listen for requests coming from other UI (DetailPanel) to open Issue / GRN flows
+  useEffect(() => {
+    function onOpenIssue(e: any) {
+      try {
+        const id = e?.detail ?? null;
+        if (id) sessionStorage.setItem('openItemForISS', String(id));
+        setActiveTab('ISS');
+      } catch (err) {}
+    }
+    function onOpenGrn(e: any) {
+      try {
+        const id = e?.detail ?? null;
+        if (id) sessionStorage.setItem('openItemForGRN', String(id));
+        setActiveTab('GRN');
+        setGrnView('grn');
+      } catch (err) {}
+    }
+    window.addEventListener('open-issue', onOpenIssue as EventListener);
+    window.addEventListener('open-grn', onOpenGrn as EventListener);
+    return () => {
+      window.removeEventListener('open-issue', onOpenIssue as EventListener);
+      window.removeEventListener('open-grn', onOpenGrn as EventListener);
+    }
+  }, []);
+
   
 
 

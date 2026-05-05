@@ -122,6 +122,19 @@ export default function AyurVaidyaGRN() {
     return () => { mounted = false; clearTimeout(t) }
   }, [searchQuery]);
 
+  // If another panel requested opening GRN for a specific item, consume it now
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem('openItemForGRN')
+      if (pending) {
+        sessionStorage.removeItem('openItemForGRN')
+        // prefill search / select item
+        selectItemById(pending)
+        setActiveTab('new')
+      }
+    } catch (e) {}
+  }, [])
+
   const handleSave = async () => {
     if (!selectedItem) return;
     const payload = {
@@ -260,6 +273,30 @@ export default function AyurVaidyaGRN() {
       expiryType: item.category === "CAPEX" ? "none" : "date",
     }));
   };
+
+  // Fetch item detail by code and select it (used for deep-linking from DetailPanel)
+  function selectItemById(id: string) {
+    if (!id) return;
+    fetch(`/api/items/detail?code=${encodeURIComponent(id)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data || data.error) return;
+        const mapped: Item = {
+          id: data.itemCode,
+          name: data.itemName,
+          sub: data.itemType || '',
+          category: data.category || 'OPEX',
+          subcat: data.subCategory || '',
+          unit: data.unit || 'ml',
+          dept: '',
+          currentStock: Array.isArray(data.itemBatches) ? data.itemBatches.reduce((s: number, b: any) => s + Number(b.quantityAvailable ?? b.quantityReceived ?? 0), 0) : 0,
+          minStock: Number(data.minStockLevel || 0),
+          batches: Array.isArray(data.itemBatches) ? data.itemBatches.map((b: any) => ({ batchNo: b.batchNumber, qty: Number(b.quantityAvailable ?? b.quantityReceived ?? 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null })) : [],
+        };
+        selectItem(mapped);
+      })
+      .catch(() => {});
+  }
 
   const clearItem = () => {
     setSelectedItem(null);
