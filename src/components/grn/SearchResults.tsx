@@ -5,7 +5,13 @@ export default function SearchResults({ results, onSelect }: { results: Item[]; 
   return (
     <div className="search-results">
       {results.map((item) => (
-        <div key={item.id} className="sr-item" onClick={() => onSelect(item)}>
+          <div
+            key={item.id}
+            className="sr-item"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(item);
+            }}>
           <div>
             <div className="sr-name">{item.name}</div>
             <div className="sr-sub">{item.sub} · {item.dept}</div>

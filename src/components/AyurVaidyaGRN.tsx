@@ -514,12 +514,12 @@ export default function AyurVaidyaGRN() {
                           />
                         </div>
                         <button className="scan-btn" onClick={simulateScan}>📷 Scan QR</button>
-
-                        {/* Search results dropdown */}
-                        {showResults && searchResults.length > 0 && (
-                          <SearchResults results={searchResults} onSelect={selectItem} />
-                        )}
                       </div>
+
+                      {/* Search results dropdown (moved out of scan-row so it flows below the row) */}
+                      {showResults && searchResults.length > 0 && (
+                        <SearchResults results={searchResults} onSelect={selectItem} />
+                      )}
 
                       {/* Selected item display */}
                       {selectedItem && (
@@ -973,7 +973,7 @@ const CSS = `
 .scan-btn:hover{background:var(--green-mid)}
 
 /* Search results dropdown */
-.search-results{position:absolute;top:100%;left:0;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,0.12);z-index:9999;animation:slideUp 0.18s ease}
+.search-results{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,0.12);margin-bottom:12px;animation:slideUp 0.18s ease}
 .sr-item{padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);transition:background 0.1s}
 .sr-item:last-child{border-bottom:none}
 .sr-item:hover{background:var(--green-light)}
