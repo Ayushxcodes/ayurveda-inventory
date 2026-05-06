@@ -3,6 +3,7 @@ import StepsBar from "./stock-issue/StepsBar";
 import ItemBadges from "./stock-issue/ItemBadges";
 import PreviewPanel from "./stock-issue/PreviewPanel";
 import ConfirmContent from "./stock-issue/ConfirmContent";
+import CameraQRScanner from "./qr/CameraQRScanner";
 
 /* ── TYPES ───────────────────────────────────────────────── */
 interface Batch {
@@ -367,6 +368,7 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   const [issueHistory, setIssueHistory] = useState<IssueRecord[]>([]);
 
   const searchRef = useRef<HTMLDivElement>(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   // Computed
   const qtyInt = parseInt(issueQty) || 0;
@@ -665,8 +667,12 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                                 autoComplete="off"
                               />
                             </div>
-                            <button className="scan-btn" onClick={simulateScan}>📷 Scan QR</button>
+                            <button className="scan-btn" onClick={() => setShowScanner(true)}>📷 Scan QR</button>
                           </div>
+
+                          {showScanner && (
+                            <CameraQRScanner onDetected={(code) => { setShowScanner(false); selectItemById(code); setActiveTab('new'); setCurrentStep(1); }} onClose={() => setShowScanner(false)} />
+                          )}
 
                           {showSearchResults && searchMatches.length > 0 && (
                             <div className="search-results">

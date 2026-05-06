@@ -135,7 +135,7 @@ export default function Home() {
           {activeTab === 'ISS' ? (
             <AyurVaidyaStockIssue />
           ) : activeTab === 'GRN' ? (
-            <AyurVaidyaGRN />
+            <AyurVaidyaGRN grnView={grnView} />
           ) : activeTab === 'REG' ? (
             <RegistryDashboard />
           ) : activeTab === 'ALL' ? (

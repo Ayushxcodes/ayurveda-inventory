@@ -3,6 +3,8 @@ import PreviewSection from "./grn/PreviewSection";
 import FefoPreview from "./grn/FefoPreview";
 import SearchResults from "./grn/SearchResults";
 import SelectedItemCard from "./grn/SelectedItemCard";
+import CameraQRScanner from "./qr/CameraQRScanner";
+import QRGenerator from "./qr/QRGenerator";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 import { Item, Batch } from "../types/items";
@@ -56,7 +58,7 @@ const daysUntil = (d: string) =>
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function AyurVaidyaGRN() {
+export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -74,6 +76,7 @@ export default function AyurVaidyaGRN() {
   });
 
   const searchRef = useRef<HTMLDivElement>(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   // Close search dropdown on outside click
   useEffect(() => {
@@ -397,6 +400,25 @@ export default function AyurVaidyaGRN() {
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
+  // If host requested QR generator view, render it as a focused panel
+  if (grnView === 'qr') {
+    return (
+      <>
+        <style>{CSS}</style>
+        <div className="ay-root">
+          <div className="main">
+            <div className="tab-bar"><div className={`tab active`}>QR Generator</div></div>
+            <div className="content">
+              <div className="form-panel">
+                <QRGenerator />
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <style>{CSS}</style>
@@ -513,7 +535,7 @@ export default function AyurVaidyaGRN() {
                             autoComplete="off"
                           />
                         </div>
-                        <button className="scan-btn" onClick={simulateScan}>📷 Scan QR</button>
+                        <button className="scan-btn" onClick={() => setShowScanner(true)}>📷 Scan QR</button>
                       </div>
 
                       {/* Search results dropdown (moved out of scan-row so it flows below the row) */}
@@ -527,6 +549,10 @@ export default function AyurVaidyaGRN() {
                       )}
                     </div>
                   </div>
+
+                  {showScanner && (
+                    <CameraQRScanner onDetected={(code) => { setShowScanner(false); selectItemById(code) }} onClose={() => setShowScanner(false)} />
+                  )}
 
                   <div className="action-row" style={{ marginTop: 4 }}>
                     <button className="btn-cancel" onClick={resetAll}>Cancel</button>
