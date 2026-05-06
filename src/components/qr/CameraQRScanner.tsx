@@ -3,12 +3,16 @@ import { createPortal } from 'react-dom'
 
 export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (code: string) => void; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [detectedBox, setDetectedBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const detectTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     let mounted = true
+    let canvas: HTMLCanvasElement | null = null
     async function start() {
       setError(null)
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -28,9 +32,20 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
         streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
-          await videoRef.current.play()
+          // ensure autoplay works
+          try {
+            videoRef.current.muted = true
+          } catch (e) {}
+          try { videoRef.current.playsInline = true } catch (e) {}
+          try {
+            await videoRef.current.play()
+          } catch (e) {
+            // ignore play errors; will attempt frames anyway
+          }
         }
         setScanning(true)
+        // create offscreen canvas for jsQR fallback
+        canvas = document.createElement('canvas')
         scanLoop()
       } catch (e: any) {
         setError(e?.message || 'Could not access camera')
@@ -45,7 +60,7 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
         // Use native BarcodeDetector when available
         const BarcodeDetectorClass = (window as any).BarcodeDetector
         if (BarcodeDetectorClass) {
-          const detector = new BarcodeDetectorClass({ formats: ['qr_code'] })
+            const detector = new BarcodeDetectorClass({ formats: ['qr_code'] })
           // Some platforms perform better if we pass an ImageBitmap instead of the video element
           try {
             let img: ImageBitmap | null = null
@@ -58,17 +73,110 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
             const results = await detector.detect(target)
             if (img) img.close()
             if (results && results.length) {
-              const code = results[0].rawValue || (results[0] as any).rawData || ''
-              stop()
-              onDetected(code)
+              const res = results[0]
+              // boundingBox may be available
+              const bb = (res as any).boundingBox
+              if (bb && video) {
+                // compute scale from video intrinsic to displayed size
+                const vw = video.videoWidth || 1
+                const vh = video.videoHeight || 1
+                const cw = video.clientWidth || vw
+                const ch = video.clientHeight || vh
+                const scaleX = cw / vw
+                const scaleY = ch / vh
+                const x = bb.x * scaleX
+                const y = bb.y * scaleY
+                const w = bb.width * scaleX
+                const h = bb.height * scaleY
+                setDetectedBox({ x, y, w, h })
+              } else {
+                setDetectedBox(null)
+              }
+
+              // debounce confirmation: wait briefly so pointer visible, then trigger
+              if (!detectTimerRef.current) {
+                detectTimerRef.current = window.setTimeout(() => {
+                  detectTimerRef.current = null
+                  const code = res.rawValue || (res as any).rawData || ''
+                  try { stop() } catch (e) {}
+                  onDetected(code)
+                }, 350)
+              }
               return
+            } else {
+              // no results -> clear any visible pointer
+              setDetectedBox(null)
             }
           } catch (detErr) {
             // detector failed on this frame, continue
           }
         } else {
-          // Fallback: draw to canvas and try to read via ImageBitmap + detection if supported
-          // Many browsers support BarcodeDetector; otherwise we cannot decode here without an external lib.
+          // Fallback using jsQR: draw to canvas and decode pixels
+          try {
+            if (!canvas) canvas = document.createElement('canvas')
+            const w = video.videoWidth || 640
+            const h = video.videoHeight || 480
+            canvas.width = w
+            canvas.height = h
+            let ctx: CanvasRenderingContext2D | null = null
+            try {
+              ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D
+            } catch (e) {
+              ctx = canvas.getContext('2d')
+            }
+            if (ctx) {
+              try {
+                ctx.drawImage(video, 0, 0, w, h)
+              } catch (err) {
+                // drawImage may fail if video not ready
+              }
+              let imageData: ImageData | null = null
+              try {
+                imageData = ctx.getImageData(0, 0, w, h)
+              } catch (gdErr) {
+                // getImageData may fail; show hint
+                // console.warn('getImageData failed', gdErr)
+                imageData = null
+              }
+              if (imageData) {
+                try {
+                  const jsqrMod = await import('jsqr')
+                  const jsQR = (jsqrMod && (jsqrMod as any).default) || (jsqrMod as any)
+                  const qr = jsQR(imageData.data, w, h)
+                  if (qr) {
+                    const tl = qr.location.topLeftCorner
+                    const br = qr.location.bottomRightCorner
+                    const minX = Math.min(tl.x, br.x)
+                    const minY = Math.min(tl.y, br.y)
+                    const boxW = Math.abs(br.x - tl.x)
+                    const boxH = Math.abs(br.y - tl.y)
+                    const vw = video.videoWidth || 1
+                    const vh = video.videoHeight || 1
+                    const cw = video.clientWidth || vw
+                    const ch = video.clientHeight || vh
+                    const scaleX = cw / vw
+                    const scaleY = ch / vh
+                    setDetectedBox({ x: minX * scaleX, y: minY * scaleY, w: boxW * scaleX, h: boxH * scaleY })
+                    if (!detectTimerRef.current) {
+                      detectTimerRef.current = window.setTimeout(() => {
+                        detectTimerRef.current = null
+                        try { stop() } catch (e) {}
+                        onDetected(qr.data)
+                      }, 350)
+                    }
+                    return
+                  } else {
+                    setDetectedBox(null)
+                  }
+                } catch (impErr) {
+                  // import or decode failed
+                  // console.warn('jsQR error', impErr)
+                }
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
         }
       } catch (e) {
         // ignore detection errors
@@ -90,11 +198,15 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
       mounted = false
       stop()
       try { cancelAnimationFrame(raf) } catch (e) {}
+      if (detectTimerRef.current) {
+        clearTimeout(detectTimerRef.current)
+        detectTimerRef.current = null
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const modal = (
+    const modal = (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 480, maxWidth: '94%', background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
         <div style={{ padding: 12, borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -106,26 +218,25 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
             <div style={{ color: '#b91c1c' }}>{error}</div>
           ) : (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <video ref={videoRef} style={{ width: 360, height: 270, background: '#000', borderRadius: 6 }} playsInline muted />
+              <div ref={containerRef} style={{ position: 'relative', width: 360, height: 270 }}>
+                <video ref={videoRef} style={{ width: '100%', height: '100%', background: '#000', borderRadius: 6, objectFit: 'cover' }} playsInline muted />
+                {detectedBox && (
+                  <div style={{ position: 'absolute', left: detectedBox.x, top: detectedBox.y, width: detectedBox.w, height: detectedBox.h, pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', inset: 0 }}>
+                      {/* four corner Ls */}
+                      <div style={{ position: 'absolute', left: -2, top: -2, width: 24, height: 24, borderLeft: '4px solid #2d7a52', borderTop: '4px solid #2d7a52', borderRadius: 2 }} />
+                      <div style={{ position: 'absolute', right: -2, top: -2, width: 24, height: 24, borderRight: '4px solid #2d7a52', borderTop: '4px solid #2d7a52', borderRadius: 2 }} />
+                      <div style={{ position: 'absolute', left: -2, bottom: -2, width: 24, height: 24, borderLeft: '4px solid #2d7a52', borderBottom: '4px solid #2d7a52', borderRadius: 2 }} />
+                      <div style={{ position: 'absolute', right: -2, bottom: -2, width: 24, height: 24, borderRight: '4px solid #2d7a52', borderBottom: '4px solid #2d7a52', borderRadius: 2 }} />
+                      <div style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, boxShadow: '0 0 0 9999px rgba(0,0,0,0.0) inset', borderRadius: 6 }} />
+                    </div>
+                  </div>
+                )}
+              </div>
               <div style={{ maxWidth: 200, fontSize: 13, color: '#555' }}>
                 <div style={{ marginBottom: 8 }}>{scanning ? 'Point the camera at a QR code to scan. Avoid glare and hold steady.' : 'Initializing camera...'}</div>
                 <div style={{ fontSize: 12, color: '#666' }}>
-                  Tips: increase camera distance, good lighting, avoid glare. If detection still fails, use the "Capture frame" button below and try scanning the saved image with your phone.
-                </div>
-                <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-                  <button onClick={() => {
-                    try {
-                      const v = videoRef.current
-                      if (!v) return
-                      const c = document.createElement('canvas')
-                      c.width = v.videoWidth || 1280
-                      c.height = v.videoHeight || 720
-                      const ctx = c.getContext('2d')
-                      if (ctx) ctx.drawImage(v, 0, 0, c.width, c.height)
-                      const url = c.toDataURL('image/png')
-                      window.open(url, '_blank')
-                    } catch (e) { }
-                  }} style={{ padding: '8px 10px', borderRadius: 6 }}>Capture frame</button>
+                  Tips: increase camera distance, improve lighting, and avoid glare. If detection fails, try scanning with your phone camera.
                 </div>
               </div>
             </div>
