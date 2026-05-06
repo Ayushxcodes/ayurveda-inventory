@@ -15,6 +15,7 @@ const AyurVaidyaStockIssue = dynamic(() => import('../components/AyurVaidyaStock
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'ALL'|'CAPEX'|'OPEX'|'REG'|'GRN'|'ISS'>('ALL');
   const [grnView, setGrnView] = useState<'grn'|'qr'>('grn');
+  const [today, setToday] = useState(() => new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }));
 
   const breadcrumbLabel = activeTab === 'GRN'
     ? 'Stock Inward (GRN)'
@@ -28,6 +29,13 @@ export default function Home() {
 
   useEffect(() => {
     // placeholder: Chart components will initialize later
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setToday(new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }));
+    }, 60 * 1000);
+    return () => clearInterval(id);
   }, []);
 
   // Listen for requests coming from other UI (DetailPanel) to open Issue / GRN flows
@@ -72,8 +80,8 @@ export default function Home() {
             <div className="nav-label">Main</div>
             <div className={`nav-item ${(activeTab as any) !== 'REG' && (activeTab as any) !== 'GRN' && (activeTab as any) !== 'ISS' ? 'active' : ''}`} onClick={() => setActiveTab('CAPEX')}><div className="nav-icon">▦</div> Dashboard</div>
             <div className={`nav-item ${(activeTab as any) === 'REG' ? 'active' : ''}`} onClick={()=>setActiveTab('REG')}><div className="nav-icon">☰</div> Item Registry</div>
-            <div className={`nav-item ${(activeTab as any) === 'GRN' ? 'active' : ''}`} onClick={() => { setActiveTab('GRN'); setGrnView('grn'); }}><div className="nav-icon">↓</div> Stock Inward</div>
-            <div className={`nav-item`} onClick={() => { setActiveTab('GRN'); setGrnView('qr'); }}><div className="nav-icon">▦</div> QR Generator</div>
+            <div className={`nav-item ${(activeTab === 'GRN' && grnView === 'grn') ? 'active' : ''}`} onClick={() => { setActiveTab('GRN'); setGrnView('grn'); }}><div className="nav-icon">↓</div> Stock Inward</div>
+            <div className={`nav-item ${(activeTab === 'GRN' && grnView === 'qr') ? 'active' : ''}`} onClick={() => { setActiveTab('GRN'); setGrnView('qr'); }}><div className="nav-icon">▦</div> QR Generator</div>
             <div className={`nav-item ${activeTab==='ISS'?'active':''}`} onClick={() => setActiveTab('ISS')}><div className="nav-icon">↑</div> Stock Issue</div>
           </div>
 
@@ -111,9 +119,8 @@ export default function Home() {
           </div>
           <div className="topbar-right">
             <div className="status-pill"><div className="status-dot"></div> System online</div>
-            <div className="date-chip">21 Apr 2025</div>
-            <div className="icon-btn">🔔<div className="notif-badge">7</div></div>
-            <div className="icon-btn">⚙</div>
+            <div className="date-chip">{today}</div>
+            
           </div>
         </header>
 

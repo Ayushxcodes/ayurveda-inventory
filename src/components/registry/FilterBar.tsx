@@ -10,6 +10,7 @@ export default function FilterBar({
   setSubcat,
   setStatus,
   clearAllFilters,
+  onExport,
 }: {
   filters: FilterState;
   setFilters: (fn: any) => void;
@@ -17,6 +18,7 @@ export default function FilterBar({
   setSubcat: (s: string) => void;
   setStatus: (s: string) => void;
   clearAllFilters: () => void;
+  onExport?: () => void;
 }) {
   const chipClass = (base: string, type: string, activeWhen: boolean) =>
     `chip${activeWhen ? ` active ${type}` : ""}`;
@@ -41,7 +43,7 @@ export default function FilterBar({
           />
         </div>
         <button className="btn" onClick={() => alert("Column visibility panel — coming soon")}>⊞ Columns</button>
-        <button className="btn" onClick={() => alert("Exporting to Excel…")}>↓ Export Excel</button>
+        <button className="btn" onClick={() => { if (onExport) onExport(); else alert("Exporting to Excel…") }}>↓ Export Excel</button>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-dim)" }}>
           Total <strong style={{ color: "var(--text)", marginLeft: 3 }}>—</strong>
         </div>

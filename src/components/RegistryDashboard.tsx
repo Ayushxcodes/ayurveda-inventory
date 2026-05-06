@@ -117,17 +117,28 @@ export default function AyurVaidyaRegistry() {
       return true;
     });
 
-    rows.sort((a, b) => {
-      let va: string | number = a.name, vb: string | number = b.name;
-      if (filters.sortCol === "status")  { va = a.status; vb = b.status; }
-      else if (filters.sortCol === "expiry") { va = a.expiry || a.amcExpiry || "9999"; vb = b.expiry || b.amcExpiry || "9999"; }
-      else if (filters.sortCol === "stock")  { va = a.stock / a.min; vb = b.stock / b.min; }
-      else if (filters.sortCol === "dept")   { va = a.dept; vb = b.dept; }
-      return va < vb ? -1 : va > vb ? 1 : 0;
-    });
-
+    // Sort according to selected column. When sorting by `status`, group by urgency
+    // (expired/amc_due/expiring/low_stock/healthy). For other sorts, apply the
+    // selected comparator and keep name as a tie-breaker.
     const urgency: Record<string, number> = { expired: 0, amc_due: 1, expiring: 2, low_stock: 3, healthy: 4 };
-    rows.sort((a, b) => (urgency[a.status] ?? 4) - (urgency[b.status] ?? 4));
+    rows.sort((a, b) => {
+      if (filters.sortCol === "status") {
+        const ua = urgency[a.status] ?? 4;
+        const ub = urgency[b.status] ?? 4;
+        if (ua !== ub) return ua - ub;
+        return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+      }
+
+      let va: string | number = a.name, vb: string | number = b.name;
+      if (filters.sortCol === "expiry") { va = a.expiry || a.amcExpiry || "9999"; vb = b.expiry || b.amcExpiry || "9999"; }
+      else if (filters.sortCol === "stock")  { va = a.stock / Math.max(1, a.min || 1); vb = b.stock / Math.max(1, b.min || 1); }
+      else if (filters.sortCol === "dept")   { va = a.dept; vb = b.dept; }
+
+      if (va < vb) return -1;
+      if (va > vb) return 1;
+      // tie-breaker
+      return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    });
 
     return rows;
   })();
@@ -217,6 +228,33 @@ export default function AyurVaidyaRegistry() {
           setSubcat={setSubcat}
           setStatus={setStatus}
           clearAllFilters={clearAllFilters}
+          onExport={() => {
+            try {
+              const rows = filtered;
+              if (!rows || !rows.length) {
+                alert('No rows to export');
+                return;
+              }
+              const cols = ['id','name','category','subcat','stock','min','max','unit','dept','status','expiry','price'];
+              const esc = (v: any) => {
+                if (v === null || v === undefined) return '';
+                const s = String(v);
+                if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+                return s;
+              }
+              const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => esc((r as any)[c])).join(','))).join('\n');
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              const name = 'registry-' + new Date().toISOString().slice(0,10) + '.csv';
+              a.href = url;
+              a.download = name;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            } catch (e) { console.error(e); alert('Export failed') }
+          }}
         />
 
         <ResultStrip filters={filters} filteredCount={filtered.length} setFilters={setFilters} />

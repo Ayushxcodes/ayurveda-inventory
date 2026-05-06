@@ -138,6 +138,21 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
     } catch (e) {}
   }, [])
 
+  // Also listen for runtime requests from other components (QRGenerator, DetailPanel)
+  useEffect(() => {
+    function onOpenGrn(e: any) {
+      try {
+        const id = e?.detail ?? null;
+        if (id) {
+          selectItemById(String(id))
+          setActiveTab('new')
+        }
+      } catch (err) {}
+    }
+    window.addEventListener('open-grn', onOpenGrn as EventListener)
+    return () => window.removeEventListener('open-grn', onOpenGrn as EventListener)
+  }, [])
+
   const handleSave = async () => {
     if (!selectedItem) return;
     const payload = {
