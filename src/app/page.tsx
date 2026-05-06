@@ -13,7 +13,7 @@ const AyurVaidyaGRN = dynamic(() => import('../components/AyurVaidyaGRN'), { ssr
 const AyurVaidyaStockIssue = dynamic(() => import('../components/AyurVaidyaStockIssue'), { ssr: false });
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'ALL'|'CAPEX'|'OPEX'|'REG'|'GRN'|'ISS'>('CAPEX');
+  const [activeTab, setActiveTab] = useState<'ALL'|'CAPEX'|'OPEX'|'REG'|'GRN'|'ISS'>('ALL');
   const [grnView, setGrnView] = useState<'grn'|'qr'>('grn');
 
   const breadcrumbLabel = activeTab === 'GRN'
