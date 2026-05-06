@@ -9,6 +9,8 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
   const [detectedBox, setDetectedBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const detectTimerRef = useRef<number | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -206,6 +208,96 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  async function processImageFile(file: File) {
+    setUploadError(null)
+    try {
+      // Try native BarcodeDetector first
+      const BarcodeDetectorClass = (window as any).BarcodeDetector
+      let bitmap: ImageBitmap | null = null
+      try {
+        bitmap = await createImageBitmap(file as any)
+      } catch (e) {
+        bitmap = null
+      }
+
+      if (BarcodeDetectorClass && bitmap) {
+        try {
+          const detector = new BarcodeDetectorClass({ formats: ['qr_code'] })
+          const results = await detector.detect(bitmap)
+          if (results && results.length) {
+            const res = results[0]
+            const code = res.rawValue || (res as any).rawData || ''
+            try { if (streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop()) } catch(e){}
+            setScanning(false)
+            try { bitmap.close && bitmap.close() } catch(e){}
+            onDetected(code)
+            return
+          }
+        } catch (e) {
+          // fall through to jsQR fallback
+        } finally {
+          try { bitmap && (bitmap as any).close && (bitmap as any).close() } catch(e){}
+        }
+      }
+
+      // jsQR fallback: draw image to canvas and decode
+      try {
+        let imgBitmap: ImageBitmap | null = null
+        try { imgBitmap = await createImageBitmap(file as any) } catch (e) { imgBitmap = null }
+        const canvas = document.createElement('canvas')
+        const w = (imgBitmap && imgBitmap.width) || 1024
+        const h = (imgBitmap && imgBitmap.height) || 1024
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('Canvas not available')
+        if (imgBitmap) ctx.drawImage(imgBitmap as any, 0, 0, w, h)
+        else {
+          // fallback: load via Image
+          const img = await new Promise<HTMLImageElement>((res, rej) => {
+            const i = new Image()
+            i.onload = () => res(i)
+            i.onerror = rej
+            i.src = URL.createObjectURL(file)
+          })
+          ctx.drawImage(img, 0, 0, w, h)
+          URL.revokeObjectURL(img.src)
+        }
+        let imageData: ImageData | null = null
+        try { imageData = ctx.getImageData(0, 0, w, h) } catch (e) { imageData = null }
+        if (imageData) {
+          const jsqrMod = await import('jsqr')
+          const jsQR = (jsqrMod && (jsqrMod as any).default) || (jsqrMod as any)
+          const qr = jsQR(imageData.data, w, h)
+          if (qr) {
+            try { if (streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop()) } catch(e){}
+            setScanning(false)
+            onDetected(qr.data)
+            return
+          }
+        }
+      } catch (e: any) {
+        // decoding failed
+      }
+
+      setUploadError('No QR code found in the selected image')
+    } catch (e: any) {
+      setUploadError(e?.message || 'Failed to process image')
+    }
+  }
+
+  function openFilePicker() {
+    setUploadError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    fileInputRef.current?.click()
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files && e.target.files[0]
+    if (!f) return
+    processImageFile(f)
+  }
+
     const modal = (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 480, maxWidth: '94%', background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
@@ -238,6 +330,32 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
                 <div style={{ fontSize: 12, color: '#666' }}>
                   Tips: increase camera distance, improve lighting, and avoid glare. If detection fails, try scanning with your phone camera.
                 </div>
+                <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={openFilePicker}
+                    aria-label="Upload image"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '6px 10px',
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 6,
+                      background: '#fff',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="#374151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M7 10l5-5 5 5" stroke="#374151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M12 5v12" stroke="#374151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span>Upload image</span>
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
+                </div>
+                {uploadError && <div style={{ marginTop: 8, color: '#b91c1c', fontSize: 12 }}>{uploadError}</div>}
               </div>
             </div>
           )}
