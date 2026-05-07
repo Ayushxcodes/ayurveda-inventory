@@ -13,7 +13,7 @@ export default function FilterBar({
   onExport,
 }: {
   filters: FilterState;
-  setFilters: (fn: any) => void;
+  setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   setCategory: (c: "all" | "OPEX" | "CAPEX") => void;
   setSubcat: (s: string) => void;
   setStatus: (s: string) => void;

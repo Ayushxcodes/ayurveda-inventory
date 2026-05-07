@@ -46,7 +46,28 @@ export default function AyurVaidyaRegistry() {
       .then((r) => r.ok ? r.json() : Promise.reject(r))
       .then((data) => {
         if (!mounted || !Array.isArray(data)) return
-        const mapped: Item[] = data.map((d: any) => {
+        type RawRow = {
+          id?: string | number;
+          name?: string;
+          sub?: string | null;
+          category?: string;
+          subcat?: string | null;
+          stock?: number | string | null;
+          min?: number | string | null;
+          max?: number | string | null;
+          unit?: string | null;
+          expiry?: string | null;
+          dept?: string | null;
+          amcExpiry?: string | null;
+          batch?: string | null;
+          supplier?: string | null;
+          price?: number | string | null;
+          amc?: string | null;
+          serial?: string | null;
+          purchase?: string | null;
+        }
+
+        const mapped: Item[] = data.map((d: RawRow) => {
           const computeStatus = () => {
             if (d.category === 'CAPEX') {
               if (!d.amcExpiry) return 'healthy'
@@ -65,25 +86,25 @@ export default function AyurVaidyaRegistry() {
           }
 
           return {
-            id: d.id,
-            name: d.name,
-            sub: d.sub || '',
-            category: d.category,
-            subcat: d.subcat,
-            stock: Number(d.stock || 0),
-            min: Number(d.min || 0),
-            max: Number(d.max || 0),
-            unit: d.unit || '',
-            expiry: d.expiry || null,
-            dept: d.dept || '',
-            status: computeStatus() as any,
-            batch: d.batch || undefined,
-            supplier: d.supplier || undefined,
-            price: Number(d.price || 0),
-            amc: d.amc || null,
-            amcExpiry: d.amcExpiry || null,
-            serial: d.serial || undefined,
-            purchase: d.purchase || undefined,
+            id: String(d.id ?? ''),
+            name: d.name ?? '',
+            sub: d.sub ?? '',
+            category: (d.category === 'CAPEX' ? 'CAPEX' : 'OPEX') as Item['category'],
+            subcat: (d.subcat as Item['subcat']) || null,
+            stock: Number(d.stock ?? 0),
+            min: Number(d.min ?? 0),
+            max: Number(d.max ?? 0),
+            unit: d.unit ?? '',
+            expiry: d.expiry ?? null,
+            dept: d.dept ?? '',
+            status: computeStatus() as Item['status'],
+            batch: d.batch ?? undefined,
+            supplier: d.supplier ?? undefined,
+            price: Number(d.price ?? 0),
+            amc: d.amc ?? null,
+            amcExpiry: d.amcExpiry ?? null,
+            serial: d.serial ?? undefined,
+            purchase: d.purchase ?? undefined,
           }
         })
         setItems(mapped)
@@ -195,7 +216,8 @@ export default function AyurVaidyaRegistry() {
       const raw = sessionStorage.getItem('registryDeepLink');
       if (raw) {
         const params = JSON.parse(raw) as Partial<FilterState>;
-        applyDeepLink(params);
+        // Defer applying the deep-link to avoid synchronous setState inside this effect
+        setTimeout(() => applyDeepLink(params), 0);
         sessionStorage.removeItem('registryDeepLink');
       }
     } catch (e) {
@@ -259,13 +281,16 @@ export default function AyurVaidyaRegistry() {
                 return;
               }
               const cols = ['id','name','category','subcat','stock','min','max','unit','dept','status','expiry','price'];
-              const esc = (v: any) => {
+              const esc = (v: unknown) => {
                 if (v === null || v === undefined) return '';
                 const s = String(v);
                 if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
                 return s;
               }
-              const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => esc((r as any)[c])).join(','))).join('\n');
+              const csv = [cols.join(',')].concat(rows.map(r => {
+                const rowRec = r as Record<string, unknown>;
+                return cols.map(c => esc(rowRec[c])).join(',');
+              })).join('\n');
               const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');

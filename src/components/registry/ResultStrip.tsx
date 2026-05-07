@@ -3,7 +3,7 @@
 import React from "react";
 import { FilterState } from "./utils";
 
-export default function ResultStrip({ filters, filteredCount, setFilters }: { filters: FilterState; filteredCount: number; setFilters: (fn: any) => void; }) {
+export default function ResultStrip({ filters, filteredCount, setFilters }: { filters: FilterState; filteredCount: number; setFilters: React.Dispatch<React.SetStateAction<FilterState>>; }) {
   return (
     <div className="result-strip">
       <div className="result-count">Showing <strong>{filteredCount}</strong> items</div>
