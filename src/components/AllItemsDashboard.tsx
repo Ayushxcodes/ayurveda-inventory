@@ -12,7 +12,14 @@ type DashboardPayload = {
   opexCount: number
   activeAlerts: number
   grnThisMonth: number
-  recentGrns: any[]
+  recentGrns: {
+    grnId: number
+    grnNumber: string
+    grnDate: Date | string
+    batchNumber?: string
+    quantityReceived?: number | string
+    item?: { itemName?: string }
+  }[]
   expiring?: { batchId: number; batchNumber?: string; expiryDate?: string; quantityAvailable?: string; item?: { itemId?: number; itemName?: string } }[]
   lowStock?: { itemId: number; itemName?: string; totalAvailable: number }[]
   amcDue?: { amcId: number; amcNumber?: string; contractEnd?: string; item?: { itemId?: number; itemName?: string } }[]

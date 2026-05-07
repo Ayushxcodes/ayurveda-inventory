@@ -12,7 +12,9 @@ export default function DonutCard({ total, devices, electrical, groups }: Props)
             <div className="legend-item"><div className="legend-sq" style={{ background: 'var(--blue)' }}></div>Medical device</div>
             <div className="legend-item"><div className="legend-sq" style={{ background: 'var(--green)' }}></div>Electrical</div>
           </div>
-          <a className="view-link">View all →</a>
+          <a className="view-link" href="#" onClick={(e) => { e.preventDefault(); try { sessionStorage.setItem('registryDeepLink', JSON.stringify({ category: 'CAPEX' })); window.dispatchEvent(new CustomEvent('open-registry')); } catch (err){} }}>
+            View all →
+          </a>
         </div>
       </div>
       <div className="card-body" style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>

@@ -180,6 +180,20 @@ export default function AyurVaidyaRegistry() {
     });
   };
 
+  // Read any deep-link set by other UI (dashboard cards) and apply it once
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('registryDeepLink');
+      if (raw) {
+        const params = JSON.parse(raw) as Partial<FilterState>;
+        applyDeepLink(params);
+        sessionStorage.removeItem('registryDeepLink');
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
   const clearAllFilters = () => {
     setFilters({ category: "all", subcat: null, status: null, search: "", highlight: null, bannerMsg: null, sortCol: "name" });
   };

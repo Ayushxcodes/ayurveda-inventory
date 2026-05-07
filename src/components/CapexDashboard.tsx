@@ -63,7 +63,7 @@ export default function CapexDashboard(){
   const now = new Date()
   const daysBetween = (d1?: string | null) => {
     if (!d1) return null
-    const diff = Math.round((new Date(d1).getTime() - Date.now()) / (1000*60*60*24))
+    const diff = Math.round((new Date(d1).getTime() - now.getTime()) / (1000*60*60*24))
     return diff
   }
 

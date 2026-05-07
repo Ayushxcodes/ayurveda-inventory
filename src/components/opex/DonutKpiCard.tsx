@@ -5,7 +5,11 @@ type Props = { total: number; medicines: number; consumables: number };
 export default function DonutKpiCard({ total, medicines, consumables }: Props) {
   return (
     <div className="card">
-      <div className="card-head"><span className="card-title">Total OPEX items</span><a className="view-link">View all →</a></div>
+      <div className="card-head"><span className="card-title">Total OPEX items</span>
+        <a className="view-link" href="#" onClick={(e) => { e.preventDefault(); try { sessionStorage.setItem('registryDeepLink', JSON.stringify({ category: 'OPEX' })); window.dispatchEvent(new CustomEvent('open-registry')); } catch (err){} }}>
+          View all →
+        </a>
+      </div>
       <div className="card-body" style={{ justifyContent: 'center', padding: '12px 14px' }}>
         <div className="donut-row">
           <svg width="80" height="80" viewBox="0 0 80 80" style={{ flexShrink: 0 }}>

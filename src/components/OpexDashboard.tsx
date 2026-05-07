@@ -26,13 +26,14 @@ type OpexItem = {
 export default function OpexDashboard(){
   const [items, setItems] = useState<OpexItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [now, setNow] = useState<number | null>(null)
 
   useEffect(()=>{
     let mounted = true
     fetch('/api/opex')
       .then(r => r.ok ? r.json() : Promise.reject(r))
-      .then((data) => { if (!mounted) return; setItems(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch(()=>{ if (!mounted) return; setItems([]); setLoading(false) })
+      .then((data) => { if (!mounted) return; setItems(Array.isArray(data) ? data : []); setLoading(false); setNow(Date.now()); })
+      .catch(()=>{ if (!mounted) return; setItems([]); setLoading(false); setNow(Date.now()); })
     return ()=>{ mounted=false }
   }, [])
 
@@ -63,8 +64,10 @@ export default function OpexDashboard(){
   const consumables = items.filter(i => i.subcat === 'consumables').length
 
   // expiry buckets based on earliest expiry date
-  const now = Date.now()
-  const days = (d?: string | null) => d ? Math.round((new Date(d).getTime() - now)/(1000*60*60*24)) : null
+  const days = (d?: string | null) => {
+    if (now == null) return null
+    return d ? Math.round((new Date(d).getTime() - now)/(1000*60*60*24)) : null
+  }
   const buckets = { lt30:0, lt60:0, lt90:0, gt90:0, expired:0 }
   items.forEach(it => {
     const dd = days(it.expiry)

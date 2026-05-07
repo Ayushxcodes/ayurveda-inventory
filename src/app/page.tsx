@@ -55,11 +55,19 @@ export default function Home() {
         setGrnView('grn');
       } catch (err) {}
     }
+    function onOpenRegistry(e: any) {
+      try {
+        // When opening registry from elsewhere, ensure the registry tab is shown.
+        setActiveTab('REG');
+      } catch (err) {}
+    }
     window.addEventListener('open-issue', onOpenIssue as EventListener);
     window.addEventListener('open-grn', onOpenGrn as EventListener);
+    window.addEventListener('open-registry', onOpenRegistry as EventListener);
     return () => {
       window.removeEventListener('open-issue', onOpenIssue as EventListener);
       window.removeEventListener('open-grn', onOpenGrn as EventListener);
+      window.removeEventListener('open-registry', onOpenRegistry as EventListener);
     }
   }, []);
 

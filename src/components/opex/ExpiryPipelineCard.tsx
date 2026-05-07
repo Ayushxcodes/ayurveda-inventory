@@ -52,7 +52,9 @@ export default function ExpiryPipelineCard({ buckets, total = 0 }: Props) {
             <div className="aleg-item"><div className="aleg-sq" style={{ background: '#78600A' }}></div>Monitor &lt;90d</div>
             <div className="aleg-item"><div className="aleg-sq" style={{ background: '#1A6B3C' }}></div>Healthy</div>
           </div>
-          <a className="view-link">View all →</a>
+          <a className="view-link" href="#" onClick={(e) => { e.preventDefault(); try { sessionStorage.setItem('registryDeepLink', JSON.stringify({ category: 'OPEX', status: 'expiring', bannerMsg: '← From Dashboard → Expiring in 30 days' })); window.dispatchEvent(new CustomEvent('open-registry')); } catch (err){} }}>
+            View all →
+          </a>
         </div>
       </div>
       <div className="card-body">

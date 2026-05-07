@@ -13,7 +13,11 @@ export default function AMCRenewalsCard({ rows, total, expired }: Props){
 
   return (
     <div className="card">
-      <div className="card-head"><span className="card-title">AMC renewals due</span><a className="view-link">View report →</a></div>
+      <div className="card-head"><span className="card-title">AMC renewals due</span>
+        <a className="view-link" href="#" onClick={(e) => { e.preventDefault(); try { sessionStorage.setItem('registryDeepLink', JSON.stringify({ category: 'CAPEX', status: 'amc_due', bannerMsg: '← From Dashboard → AMC renewals due' })); window.dispatchEvent(new CustomEvent('open-registry')); } catch (err){} }}>
+          View report →
+        </a>
+      </div>
       <div className="card-body">
         <table className="amc-table">
           <thead>

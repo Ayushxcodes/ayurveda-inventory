@@ -15,7 +15,9 @@ export default function InventoryHealthPanel({ totalItems = 0, capexCount = 0, o
     <div className="panel">
       <div className="panel-head">
         <span className="panel-title">Inventory health — overall status</span>
-        <a className="view-link">View all alerts →</a>
+        <a className="view-link" href="#" onClick={(e) => { e.preventDefault(); try { sessionStorage.setItem('registryDeepLink', JSON.stringify({ status: 'expired', bannerMsg: '← From Dashboard → Alerts: expired items' })); window.dispatchEvent(new CustomEvent('open-registry')); } catch (err){} }}>
+          View all alerts →
+        </a>
       </div>
       <div className="panel-body">
         <div className="health-block">

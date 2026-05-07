@@ -14,7 +14,11 @@ export default function LowStockCard({ rows }: Props) {
 
   return (
     <div className="card">
-      <div className="card-head"><span className="card-title">Low stock — needs reorder</span><a className="view-link">View all →</a></div>
+      <div className="card-head"><span className="card-title">Low stock — needs reorder</span>
+        <a className="view-link" href="#" onClick={(e) => { e.preventDefault(); try { sessionStorage.setItem('registryDeepLink', JSON.stringify({ category: 'OPEX', status: 'low_stock', bannerMsg: '← From Dashboard → Low stock items' })); window.dispatchEvent(new CustomEvent('open-registry')); } catch (err){} }}>
+          View all →
+        </a>
+      </div>
       <div className="card-body" style={{ justifyContent: 'center' }}>
         <div className="stock-list">
           {fallback.map((r, i) => (
