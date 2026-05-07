@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FilterState } from "./utils";
+import { FilterState, isSubcatAllowed, isStatusAllowed } from "./utils";
 
 export default function FilterBar({
   filters,
@@ -22,6 +22,11 @@ export default function FilterBar({
 }) {
   const chipClass = (base: string, type: string, activeWhen: boolean) =>
     `chip${activeWhen ? ` active ${type}` : ""}`;
+
+  // cascading logic is provided by utils helpers
+  const category = filters.category;
+  const subcatAllowed = (s: string) => isSubcatAllowed(category, s);
+  const statusAllowed = (st: string) => isStatusAllowed(category, st);
 
   return (
     <div className="filter-bar">
@@ -57,18 +62,18 @@ export default function FilterBar({
 
         <div className="filter-divider" />
         <span className="filter-group-label">Sub-type:</span>
-        <span className={chipClass("chip", "devices",     filters.subcat === "devices")}     onClick={() => setSubcat("devices")}>🩺 Medical devices</span>
-        <span className={chipClass("chip", "electrical",  filters.subcat === "electrical")}  onClick={() => setSubcat("electrical")}>💡 Electrical</span>
-        <span className={chipClass("chip", "medicines",   filters.subcat === "medicines")}   onClick={() => setSubcat("medicines")}>🌿 Medicines</span>
-        <span className={chipClass("chip", "consumables", filters.subcat === "consumables")} onClick={() => setSubcat("consumables")}>📦 Consumables</span>
+        <span className={chipClass("chip", "devices",     filters.subcat === "devices") + (subcatAllowed('devices') ? '' : ' disabled')}     onClick={() => subcatAllowed('devices') && setSubcat("devices")}>🩺 Medical devices</span>
+        <span className={chipClass("chip", "electrical",  filters.subcat === "electrical") + (subcatAllowed('electrical') ? '' : ' disabled')}  onClick={() => subcatAllowed('electrical') && setSubcat("electrical")}>💡 Electrical</span>
+        <span className={chipClass("chip", "medicines",   filters.subcat === "medicines") + (subcatAllowed('medicines') ? '' : ' disabled')}   onClick={() => subcatAllowed('medicines') && setSubcat("medicines")}>🌿 Medicines</span>
+        <span className={chipClass("chip", "consumables", filters.subcat === "consumables") + (subcatAllowed('consumables') ? '' : ' disabled')} onClick={() => subcatAllowed('consumables') && setSubcat("consumables")}>📦 Consumables</span>
 
         <div className="filter-divider" />
         <span className="filter-group-label">Status:</span>
-        <span className={chipClass("chip", "expiring",  filters.status === "expiring")}  onClick={() => setStatus("expiring")}>⏰ Expiring soon</span>
-        <span className={chipClass("chip", "expired",   filters.status === "expired")}   onClick={() => setStatus("expired")}>🚫 Expired</span>
-        <span className={chipClass("chip", "low_stock", filters.status === "low_stock")} onClick={() => setStatus("low_stock")}>📉 Low stock</span>
-        <span className={chipClass("chip", "amc_due",   filters.status === "amc_due")}   onClick={() => setStatus("amc_due")}>📋 AMC due</span>
-        <span className={chipClass("chip", "healthy",   filters.status === "healthy")}   onClick={() => setStatus("healthy")}>✓ Healthy</span>
+        <span className={chipClass("chip", "expiring",  filters.status === "expiring") + (statusAllowed('expiring') ? '' : ' disabled')}  onClick={() => statusAllowed('expiring') && setStatus("expiring")}>⏰ Expiring soon</span>
+        <span className={chipClass("chip", "expired",   filters.status === "expired") + (statusAllowed('expired') ? '' : ' disabled')}   onClick={() => statusAllowed('expired') && setStatus("expired")}>🚫 Expired</span>
+        <span className={chipClass("chip", "low_stock", filters.status === "low_stock") + (statusAllowed('low_stock') ? '' : ' disabled')} onClick={() => statusAllowed('low_stock') && setStatus("low_stock")}>📉 Low stock</span>
+        <span className={chipClass("chip", "amc_due",   filters.status === "amc_due") + (statusAllowed('amc_due') ? '' : ' disabled')}   onClick={() => statusAllowed('amc_due') && setStatus("amc_due")}>📋 AMC due</span>
+        <span className={chipClass("chip", "healthy",   filters.status === "healthy") + (statusAllowed('healthy') ? '' : ' disabled')}   onClick={() => statusAllowed('healthy') && setStatus("healthy")}>✓ Healthy</span>
       </div>
     </div>
   );

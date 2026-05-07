@@ -146,12 +146,21 @@ export default function AyurVaidyaRegistry() {
   // ── Chip state helpers ────────────────────────────────────────────────────
 
   const setCategory = (cat: "all" | "OPEX" | "CAPEX") => {
-    setFilters((f) => ({
-      ...f,
-      category: cat,
-      subcat: cat === "all" ? null : f.subcat,
-      status: cat === "all" ? null : f.status,
-    }));
+    setFilters((f) => {
+      let newSub = f.subcat;
+      let newStatus = f.status;
+      if (cat === 'OPEX') {
+        // clear CAPEX-only subcats/status
+        if (newSub === 'devices' || newSub === 'electrical') newSub = null;
+        if (newStatus === 'amc_due') newStatus = null;
+      } else if (cat === 'CAPEX') {
+        // clear OPEX-only subcats/status
+        if (newSub === 'medicines' || newSub === 'consumables') newSub = null;
+        if (newStatus === 'expiring' || newStatus === 'low_stock') newStatus = null;
+      }
+      if (cat === 'all') { newSub = null; newStatus = null }
+      return { ...f, category: cat, subcat: newSub, status: newStatus };
+    });
   };
 
   const setSubcat = (sub: string) => {

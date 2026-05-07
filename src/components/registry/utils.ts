@@ -70,3 +70,17 @@ export const STATUS_MAP: Record<string, [string, string]> = {
   amc_due:  ["sp-amc",      "📋 AMC due"],
   critical: ["sp-critical", "⚠ Critical"],
 };
+
+// Helpers for cascading filter UI: determine whether a subcat or status
+// is applicable for a given category.
+export function isSubcatAllowed(category: "all" | "OPEX" | "CAPEX", s: string) {
+  if (category === 'all') return true;
+  if (category === 'CAPEX') return s === 'devices' || s === 'electrical';
+  return s === 'medicines' || s === 'consumables';
+}
+
+export function isStatusAllowed(category: "all" | "OPEX" | "CAPEX", st: string) {
+  if (category === 'all') return true;
+  if (category === 'CAPEX') return st === 'amc_due' || st === 'expired' || st === 'healthy';
+  return st === 'expiring' || st === 'expired' || st === 'low_stock' || st === 'healthy';
+}
