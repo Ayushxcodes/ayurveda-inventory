@@ -59,6 +59,27 @@ export default function DetailPanel({ item, onClose }: { item: Item | null | "ne
               </span>
             </div>
             <Field label="Batch number" value={item.batch || "—"} mono />
+            {(item as any).batches && (item as any).batches.length ? (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 6 }}>Batches</div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {(item as any).batches.map((b: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: 8, background: '#fafafa', borderRadius: 6 }}>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <div style={{ fontFamily: 'var(--mono)', minWidth: 96 }}>{b.batch}</div>
+                        <div>{b.stock} {item.unit}</div>
+                        <div>{b.expiry ? new Date(b.expiry).toLocaleDateString('en-IN') : '—'}</div>
+                        <div style={{ color: 'var(--text-dim)' }}>{b.supplier || '—'}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <div className="dp-btn" onClick={() => { try { window.dispatchEvent(new CustomEvent('open-issue', { detail: { id: item.id, batch: b.batch } })); } catch (e) {} }}>Issue</div>
+                        <div className="dp-btn" onClick={() => { alert('Receive GRN into batch: ' + b.batch); }}>GRN</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="dp-field">
               <span className="dp-label">Expiry date</span>
               <span className={`dp-value expiry-cell ${exp.cls}`}>{exp.txt}</span>

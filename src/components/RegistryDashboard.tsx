@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Item, FilterState } from "./registry/utils";
+import { Item, FilterState, Batch } from "./registry/utils";
 import FilterBar from "./registry/FilterBar";
 import ResultStrip from "./registry/ResultStrip";
 import RegistryTable from "./registry/RegistryTable";
@@ -46,6 +46,7 @@ export default function AyurVaidyaRegistry() {
       .then((r) => r.ok ? r.json() : Promise.reject(r))
       .then((data) => {
         if (!mounted || !Array.isArray(data)) return
+        type RawBatch = { batch?: string | null; stock?: number | string | null; expiry?: string | null; supplier?: string | null; price?: number | string | null; location?: string | null };
         type RawRow = {
           id?: string | number;
           name?: string;
@@ -60,6 +61,7 @@ export default function AyurVaidyaRegistry() {
           dept?: string | null;
           amcExpiry?: string | null;
           batch?: string | null;
+          batches?: RawBatch[] | null;
           supplier?: string | null;
           price?: number | string | null;
           amc?: string | null;
@@ -68,6 +70,12 @@ export default function AyurVaidyaRegistry() {
         }
 
         const mapped: Item[] = data.map((d: RawRow) => {
+          const rawBatches: RawBatch[] = Array.isArray(d.batches) && d.batches.length ? d.batches : (d.batch ? [{ batch: d.batch, stock: d.stock ?? 0, expiry: d.expiry ?? null, supplier: d.supplier ?? null, price: d.price ?? null }] : []);
+          const batches = rawBatches.map(b => ({ batch: String(b.batch ?? ''), stock: Number(b.stock ?? 0), expiry: b.expiry ?? null, supplier: b.supplier ?? undefined, price: b.price ? Number(b.price) : undefined, location: b.location ?? undefined }));
+          const totalStock = batches.reduce((s, x) => s + (x.stock || 0), 0);
+          const earliestExpiry = batches.filter(b => b.expiry).map(b => new Date(b.expiry as string).getTime()).sort((a,b)=>a-b)[0];
+          const expiryStr = earliestExpiry ? new Date(earliestExpiry).toISOString() : (d.expiry ?? null);
+
           const computeStatus = () => {
             if (d.category === 'CAPEX') {
               if (!d.amcExpiry) return 'healthy'
@@ -76,12 +84,26 @@ export default function AyurVaidyaRegistry() {
               if (days < 60) return 'amc_due'
               return 'healthy'
             }
-            if (d.expiry) {
+            // OPEX: consider batch expiries first
+            if (batches.length) {
+              for (const b of batches) {
+                if (b.expiry) {
+                  const days = Math.round((new Date(b.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                  if (days < 0) return 'expired'
+                }
+              }
+              for (const b of batches) {
+                if (b.expiry) {
+                  const days = Math.round((new Date(b.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                  if (days < 30) return 'expiring'
+                }
+              }
+            } else if (d.expiry) {
               const days = Math.round((new Date(d.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
               if (days < 0) return 'expired'
               if (days < 30) return 'expiring'
             }
-            if (d.min && d.stock < d.min) return 'low_stock'
+            if (d.min && totalStock < Number(d.min)) return 'low_stock'
             return 'healthy'
           }
 
@@ -91,16 +113,17 @@ export default function AyurVaidyaRegistry() {
             sub: d.sub ?? '',
             category: (d.category === 'CAPEX' ? 'CAPEX' : 'OPEX') as Item['category'],
             subcat: (d.subcat as Item['subcat']) || null,
-            stock: Number(d.stock ?? 0),
+            stock: totalStock || Number(d.stock ?? 0),
             min: Number(d.min ?? 0),
             max: Number(d.max ?? 0),
             unit: d.unit ?? '',
-            expiry: d.expiry ?? null,
+            expiry: expiryStr ?? null,
             dept: d.dept ?? '',
             status: computeStatus() as Item['status'],
-            batch: d.batch ?? undefined,
+            batch: batches[0]?.batch ?? d.batch ?? undefined,
+            batches: batches as Batch[],
             supplier: d.supplier ?? undefined,
-            price: Number(d.price ?? 0),
+            price: Number(d.price ?? (batches[0]?.price ?? 0)),
             amc: d.amc ?? null,
             amcExpiry: d.amcExpiry ?? null,
             serial: d.serial ?? undefined,
@@ -121,7 +144,7 @@ export default function AyurVaidyaRegistry() {
   // ── Filter logic ──────────────────────────────────────────────────────────
 
   const filtered = (() => {
-    let rows = items.filter((item) => {
+    const rows = items.filter((item) => {
       if (filters.category !== "all" && item.category !== filters.category) return false;
       if (filters.subcat && item.subcat !== filters.subcat) return false;
       if (filters.status) {
@@ -220,7 +243,7 @@ export default function AyurVaidyaRegistry() {
         setTimeout(() => applyDeepLink(params), 0);
         sessionStorage.removeItem('registryDeepLink');
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }, []);
@@ -228,9 +251,6 @@ export default function AyurVaidyaRegistry() {
   const clearAllFilters = () => {
     setFilters({ category: "all", subcat: null, status: null, search: "", highlight: null, bannerMsg: null, sortCol: "name" });
   };
-
-  const chipClass = (base: string, type: string, activeWhen: boolean) =>
-    `chip${activeWhen ? ` active ${type}` : ""}`;
 
   // ── Demo scenarios ────────────────────────────────────────────────────────
 
@@ -247,7 +267,7 @@ export default function AyurVaidyaRegistry() {
     "all":           {},
   };
 
-  const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -280,16 +300,36 @@ export default function AyurVaidyaRegistry() {
                 alert('No rows to export');
                 return;
               }
-              const cols = ['id','name','category','subcat','stock','min','max','unit','dept','status','expiry','price'];
+              const includeBatches = confirm('Include batch-level rows in CSV? Click OK to include, Cancel to export aggregated items.');
+              const cols = includeBatches
+                ? ['id','name','category','subcat','batch','stock','unit','dept','status','expiry','price']
+                : ['id','name','category','subcat','stock','min','max','unit','dept','status','expiry','price'];
               const esc = (v: unknown) => {
                 if (v === null || v === undefined) return '';
                 const s = String(v);
                 if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
                 return s;
               }
-              const csv = [cols.join(',')].concat(rows.map(r => {
-                const rowRec = r as Record<string, unknown>;
-                return cols.map(c => esc(rowRec[c])).join(',');
+
+              const records: Record<string, unknown>[] = [];
+              if (includeBatches) {
+                for (const it of rows) {
+                    const b = (it as Item).batches as Batch[] | undefined;
+                  if (b && b.length) {
+                    for (const bb of b) {
+                      records.push({ id: it.id, name: it.name, category: it.category, subcat: it.subcat, batch: bb.batch, stock: bb.stock, unit: it.unit, dept: it.dept, status: it.status, expiry: bb.expiry || it.expiry, price: bb.price ?? it.price });
+                    }
+                    continue;
+                  }
+                  // fallback single-row
+                  records.push({ id: it.id, name: it.name, category: it.category, subcat: it.subcat, batch: it.batch, stock: it.stock, unit: it.unit, dept: it.dept, status: it.status, expiry: it.expiry, price: it.price });
+                }
+              } else {
+                for (const it of rows) records.push(it as unknown as Record<string, unknown>);
+              }
+
+              const csv = [cols.join(',')].concat(records.map(r => {
+                return cols.map(c => esc((r as Record<string, unknown>)[c])).join(',');
               })).join('\n');
               const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
               const url = URL.createObjectURL(blob);

@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Item, stockPct, expiryLabel, stockBarColor } from "./utils";
+import React, { useState } from "react";
+import { Item, stockPct, expiryLabel, stockBarColor, Batch } from "./utils";
 import StatusPill from "./StatusPill";
 
 export default function RegistryTable({
@@ -15,6 +15,8 @@ export default function RegistryTable({
   onRowClick: (item: Item) => void;
   highlightRef: React.RefObject<HTMLTableRowElement | null>;
 }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const toggle = (id: string) => setExpanded(e => ({ ...e, [id]: !e[id] }));
   return (
     <div className="table-wrap">
       {items.length === 0 ? (
@@ -43,6 +45,7 @@ export default function RegistryTable({
               const pct = stockPct(item);
               const exp = expiryLabel(item);
               const isHL = highlight === item.id;
+              const hasBatches = Array.isArray((item as Item).batches) && (item as Item).batches!.length > 0;
 
               const stockDisp = item.category === "CAPEX" ? (
                 <span style={{ fontFamily: "var(--mono)", fontSize: 12 }}>{item.stock} {item.unit}</span>
@@ -56,15 +59,20 @@ export default function RegistryTable({
               );
 
               return (
+                <React.Fragment key={item.id}>
                 <tr
-                  key={item.id}
                   className={isHL ? "highlighted" : ""}
                   style={{ animationDelay: `${idx * 0.02}s` }}
                   ref={isHL ? (el) => { if (el) highlightRef.current = el; } : undefined}
                   data-id={item.id}
                   onClick={() => onRowClick(item)}
                 >
-                  <td><span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-dim)" }}>{item.id}</span></td>
+                  <td style={{ width: 56 }}>
+                    {hasBatches ? (
+                      <button className="expand-btn" onClick={(e) => { e.stopPropagation(); toggle(item.id); }} style={{ marginRight: 8 }}>{expanded[item.id] ? '▾' : '▸'}</button>
+                    ) : null}
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-dim)" }}>{item.id}</span>
+                  </td>
                   <td>
                     <div className="item-name-cell">
                       <div className="item-name">{item.name}</div>
@@ -86,6 +94,29 @@ export default function RegistryTable({
                     </div>
                   </td>
                 </tr>
+                {hasBatches && expanded[item.id] ? (
+                  (item as Item).batches!.map((b: Batch, bi: number) => (
+                    <tr key={`${item.id}-batch-${bi}`} className="batch-row" onClick={() => onRowClick(item)}>
+                      <td />
+                      <td colSpan={6} style={{ paddingLeft: 56 }}>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                          <div style={{ minWidth: 160, fontFamily: 'var(--mono)', fontSize: 12 }}>{b.batch}</div>
+                          <div style={{ minWidth: 120 }}>{String(b.stock)} {item.unit}</div>
+                          <div style={{ minWidth: 160 }}>{b.expiry ? new Date(b.expiry).toLocaleDateString('en-IN') : '—'}</div>
+                          <div style={{ minWidth: 160 }}>{b.supplier || '—'}</div>
+                          <div style={{ minWidth: 100 }}>{b.price ? `₹${b.price}` : '—'}</div>
+                        </div>
+                      </td>
+                      <td><StatusPill status={item.status} /></td>
+                      <td>
+                        <div className="action-cell">
+                          <button className="action-btn" onClick={(e) => { e.stopPropagation(); alert('Issue from batch ' + b.batch); }}>Issue</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : null}
+                </React.Fragment>
               );
             })}
           </tbody>

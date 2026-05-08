@@ -12,12 +12,22 @@ export type Item = {
   dept: string;
   status: "healthy" | "expiring" | "expired" | "low_stock" | "amc_due" | "critical";
   batch?: string;
+  batches?: Batch[];
   supplier?: string;
   price: number;
   amc?: string | null;
   amcExpiry?: string | null;
   serial?: string;
   purchase?: string;
+};
+
+export type Batch = {
+  batch: string;
+  stock: number;
+  expiry?: string | null;
+  supplier?: string | null;
+  price?: number | null;
+  location?: string | null;
 };
 
 export type FilterState = {
