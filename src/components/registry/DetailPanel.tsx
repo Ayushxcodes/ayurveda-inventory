@@ -72,7 +72,7 @@ export default function DetailPanel({ item, onClose }: { item: Item | null | "ne
                         <div style={{ color: 'var(--text-dim)' }}>{b.supplier || '—'}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <div className="dp-btn" onClick={() => { try { window.dispatchEvent(new CustomEvent('open-issue', { detail: { id: item.id, batch: b.batch } })); } catch (e) {} }}>Issue</div>
+                        <div className="dp-btn" onClick={() => { try { sessionStorage.setItem('openItemForISS', String(item.id)); sessionStorage.setItem('openItemForISSBatch', String(b.batch)); window.dispatchEvent(new CustomEvent('open-issue', { detail: item.id })); } catch (e) {} }}>Issue</div>
                         <div className="dp-btn" onClick={() => { alert('Receive GRN into batch: ' + b.batch); }}>GRN</div>
                       </div>
                     </div>
@@ -118,6 +118,10 @@ export default function DetailPanel({ item, onClose }: { item: Item | null | "ne
             onClick={() => {
               try {
                 const id = item !== "new" && item ? item.id : null;
+                if (id) {
+                  sessionStorage.setItem('openItemForISS', String(id));
+                  sessionStorage.removeItem('openItemForISSBatch');
+                }
                 window.dispatchEvent(new CustomEvent('open-issue', { detail: id }));
               } catch (e) {}
               onClose();

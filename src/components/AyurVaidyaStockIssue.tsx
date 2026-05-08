@@ -570,6 +570,19 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
     } catch (e) {}
   }, [])
 
+  // If a batch was specified by the caller (DetailPanel), pick it after item details load
+  useEffect(() => {
+    try {
+      const pendingBatch = sessionStorage.getItem('openItemForISSBatch')
+      if (selectedItem && pendingBatch) {
+        const batches = fefoSort(selectedItem)
+        const match = batches.find((bb) => bb.batchNo === pendingBatch)
+        if (match) setSelectedBatch(match)
+        sessionStorage.removeItem('openItemForISSBatch')
+      }
+    } catch (e) {}
+  }, [selectedItem])
+
   // Fetch issue history when user switches to history tab
   useEffect(() => {
     if (activeTab !== 'history') return;
