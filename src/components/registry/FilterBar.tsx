@@ -11,6 +11,7 @@ export default function FilterBar({
   setStatus,
   clearAllFilters,
   onExport,
+  onImport,
 }: {
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
@@ -19,6 +20,7 @@ export default function FilterBar({
   setStatus: (s: string) => void;
   clearAllFilters: () => void;
   onExport?: () => void;
+  onImport?: () => void;
 }) {
   const chipClass = (base: string, type: string, activeWhen: boolean) =>
     `chip${activeWhen ? ` active ${type}` : ""}`;
@@ -49,6 +51,7 @@ export default function FilterBar({
         </div>
         <button className="btn" onClick={() => alert("Column visibility panel — coming soon")}>⊞ Columns</button>
         <button className="btn" onClick={() => { if (onExport) onExport(); else alert("Exporting to Excel…") }}>↓ Export Excel</button>
+        <button className="btn" onClick={() => { if (onImport) onImport(); else alert("Importing from Excel…") }}>↑ Import Excel</button>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-dim)" }}>
           Total <strong style={{ color: "var(--text)", marginLeft: 3 }}>—</strong>
         </div>
