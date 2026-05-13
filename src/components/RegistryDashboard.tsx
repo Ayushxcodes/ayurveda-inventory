@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import react, { useState, useEffect, useRef } from "react";
 import { Item, FilterState, Batch } from "./registry/utils";
 import FilterBar from "./registry/FilterBar";
 import ResultStrip from "./registry/ResultStrip";
@@ -27,6 +27,7 @@ export default function AyurVaidyaRegistry() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const highlightRef = useRef<HTMLTableRowElement | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   // Styles are loaded from src/components/registry/registry.css (imported in globals.css)
 
@@ -252,6 +253,48 @@ export default function AyurVaidyaRegistry() {
     setFilters({ category: "all", subcat: null, status: null, search: "", highlight: null, bannerMsg: null, sortCol: "name" });
   };
 
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try{
+      const text = await file.text();
+
+      const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+
+      if (lines.length < 2) {
+        alert("Import file has no data rows.");
+        return;
+      }
+      const headers = lines[0].split(",").map((h) => h.trim());
+      const rows = lines.slice(1).map(line => {
+        const values = line.split(",").map(v => v.trim());
+        return headers.reduce<Record<string, string>>((acc, header, index) => {
+          acc[header] = values[index] ?? "";
+          return acc;
+        }, {});
+      });
+      const res = await fetch("/api/registry/import", {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "import failed.");
+        return;
+      }
+      alert(`Imported ${data.imported ?? rows.length} rows successfully.`);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to import file. Please ensure it's a valid CSV with the correct format.");
+    }finally {
+      e.target.value = ""; // reset file input
+    }   
+  };
+
   // ── Demo scenarios ────────────────────────────────────────────────────────
 
   const DEMO_SCENARIOS: Record<string, Partial<FilterState>> = {
@@ -273,6 +316,13 @@ export default function AyurVaidyaRegistry() {
 
   return (
     <div className="av-app">
+      <input 
+        ref={importInputRef}
+        type="file"
+        accept=".csv"
+        style={{ display: "none" }}
+        onChange={handleImportFile}
+      />
       {/* Inject Google Fonts */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
@@ -293,6 +343,7 @@ export default function AyurVaidyaRegistry() {
           setSubcat={setSubcat}
           setStatus={setStatus}
           clearAllFilters={clearAllFilters}
+          onImport={() => importInputRef.current?.click()}
           onExport={() => {
             try {
               const rows = filtered;
