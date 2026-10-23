@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 
 type ExpiringBatch = { batchId: number; batchNumber?: string; expiryDate?: string; quantityAvailable?: string; item?: { itemId?: number; itemName?: string } }
 type LowStockItem = { itemId: number; itemName?: string; totalAvailable: number }
@@ -12,6 +13,7 @@ type Props = {
 }
 
 export default function AttentionCard({ activeAlerts = 0, expiring = [], lowStock = [], amcDue = [] }: Props) {
+  const [now] = useState(() => Date.now());
   return (
     <div className="attention-card">
       <div className="attention-head">
@@ -24,7 +26,7 @@ export default function AttentionCard({ activeAlerts = 0, expiring = [], lowStoc
           <div className="attn-lbl">Expiring in 30 days</div>
           <div className="attn-list">
             {expiring.slice(0,3).map((b) => (
-              <div className="attn-row" key={b.batchId}><div className="dot dot-red" /> <span className="attn-name">{b.item?.itemName ?? b.batchNumber}</span> <span className="pill pill-red">{b.expiryDate ? Math.max(0, Math.ceil((new Date(b.expiryDate).getTime() - Date.now())/86400000)) + 'd' : ''}</span></div>
+              <div className="attn-row" key={b.batchId}><div className="dot dot-red" /> <span className="attn-name">{b.item?.itemName ?? b.batchNumber}</span> <span className="pill pill-red">{b.expiryDate ? Math.max(0, Math.ceil((new Date(b.expiryDate).getTime() - now)/86400000)) + 'd' : ''}</span></div>
             ))}
             {expiring.length > 3 && <div className="attn-more">+{expiring.length - 3} more → OPEX tab</div>}
           </div>
@@ -46,7 +48,7 @@ export default function AttentionCard({ activeAlerts = 0, expiring = [], lowStoc
           <div className="attn-lbl">AMC renewals due (60 days)</div>
           <div className="attn-list">
             {amcDue.slice(0,3).map((a) => (
-              <div className="attn-row" key={a.amcId}><div className="dot dot-blue" /> <span className="attn-name">{a.item?.itemName}</span> <span className="pill pill-red">{a.contractEnd ? Math.max(0, Math.ceil((new Date(a.contractEnd).getTime() - Date.now())/86400000)) + 'd' : ''}</span></div>
+              <div className="attn-row" key={a.amcId}><div className="dot dot-blue" /> <span className="attn-name">{a.item?.itemName}</span> <span className="pill pill-red">{a.contractEnd ? Math.max(0, Math.ceil((new Date(a.contractEnd).getTime() - now)/86400000)) + 'd' : ''}</span></div>
             ))}
             {amcDue.length > 3 && <div className="attn-more">+{amcDue.length - 3} more → CAPEX tab</div>}
           </div>

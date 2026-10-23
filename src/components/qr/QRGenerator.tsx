@@ -3,6 +3,30 @@ import { Item } from "../../types/items";
 import SearchResults from "../grn/SearchResults";
 import SelectedItemCard from "../grn/SelectedItemCard";
 
+interface ServerBatch {
+  batchNo?: string;
+  batch_number?: string;
+  qty?: number | string | null;
+  quantity?: number | string | null;
+  qty_sum?: number | string | null;
+  expiry?: string | null;
+}
+
+interface ServerItem {
+  id: string;
+  name: string;
+  sub?: string;
+  category?: 'OPEX' | 'CAPEX';
+  subcat?: string;
+  unit?: string;
+  dept?: string;
+  currentStock?: number | string | null;
+  stock?: number | string | null;
+  minStock?: number | string | null;
+  min_stock_level?: number | string | null;
+  batches?: ServerBatch[];
+}
+
 export default function QRGenerator() {
   const [searchQuery, setSearchQuery] = useState("");
   const [remoteResults, setRemoteResults] = useState<Item[]>([]);
@@ -22,7 +46,10 @@ export default function QRGenerator() {
 
   useEffect(() => {
     const q = searchQuery.trim();
-    if (!q) { setRemoteResults([]); return }
+    if (!q) {
+      const t = setTimeout(() => setRemoteResults([]), 0);
+      return () => clearTimeout(t);
+    }
     let mounted = true;
     const t = setTimeout(() => {
       fetch(`/api/items?q=${encodeURIComponent(q)}`)
@@ -30,7 +57,7 @@ export default function QRGenerator() {
         .then((data) => {
           if (!mounted) return;
           if (!Array.isArray(data)) { setRemoteResults([]); return }
-          const mapped = data.map((it: any): Item => ({
+          const mapped = (data as ServerItem[]).map((it: ServerItem): Item => ({
             id: it.id,
             name: it.name,
             sub: it.sub || '',
@@ -40,7 +67,7 @@ export default function QRGenerator() {
             dept: it.dept || '',
             currentStock: Number(it.currentStock ?? it.stock ?? 0),
             minStock: Number(it.minStock ?? it.min_stock_level ?? 0),
-            batches: Array.isArray(it.batches) ? it.batches.map((b: any) => ({ batchNo: b.batchNo || b.batch_number, qty: Number(b.qty || b.quantity || b.qty_sum || 0), expiry: b.expiry || null })) : [],
+            batches: Array.isArray(it.batches) ? it.batches.map((b: ServerBatch) => ({ batchNo: b.batchNo || b.batch_number || '', qty: Number(b.qty || b.quantity || b.qty_sum || 0), expiry: b.expiry || null })) : [],
           }))
           setRemoteResults(mapped)
         })
@@ -58,17 +85,17 @@ export default function QRGenerator() {
   const payloadFor = (id: string) => `${id}`;
 
   const openInGRN = (id: string) => {
-    try { sessionStorage.setItem('openItemForGRN', String(id)) } catch (e) {}
+    try { sessionStorage.setItem('openItemForGRN', String(id)) } catch {}
     window.dispatchEvent(new CustomEvent('open-grn', { detail: id }))
   }
   const openInISS = (id: string) => {
-    try { sessionStorage.setItem('openItemForISS', String(id)) } catch (e) {}
+    try { sessionStorage.setItem('openItemForISS', String(id)) } catch {}
     window.dispatchEvent(new CustomEvent('open-issue', { detail: id }))
   }
 
   const copyPayload = async (id: string) => {
     const p = payloadFor(id)
-    try { await navigator.clipboard.writeText(p); alert('QR payload copied') } catch (e) { alert('Copy failed') }
+    try { await navigator.clipboard.writeText(p); alert('QR payload copied') } catch { alert('Copy failed') }
   }
 
   return (

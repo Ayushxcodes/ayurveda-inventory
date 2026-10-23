@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import dynamic from 'next/dynamic';
+import { fetchWithCache } from '../lib/client-cache';
+import Sidebar from '../components/Sidebar';
 
-const BarChart = dynamic(() => import('../components/charts/BarChart'), { ssr: false });
 const OpexDashboard = dynamic(() => import('../components/OpexDashboard'), { ssr: false });
 const CapexDashboard = dynamic(() => import('../components/CapexDashboard'), { ssr: false });
 const AllItemsDashboard = dynamic(() => import('../components/AllItemsDashboard'), { ssr: false });
@@ -15,6 +15,7 @@ const AyurVaidyaStockIssue = dynamic(() => import('../components/AyurVaidyaStock
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'ALL'|'CAPEX'|'OPEX'|'REG'|'GRN'|'ISS'>('ALL');
   const [grnView, setGrnView] = useState<'grn'|'qr'>('grn');
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [today, setToday] = useState(() => new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }));
 
   const breadcrumbLabel = activeTab === 'GRN'
@@ -28,7 +29,13 @@ export default function Home() {
     : 'All items';
 
   useEffect(() => {
-    // placeholder: Chart components will initialize later
+    // Gentle idle prefetch of secondary tabs so navigation is instant
+    const timer = setTimeout(() => {
+      fetchWithCache('/api/capex').catch(() => {});
+      fetchWithCache('/api/opex').catch(() => {});
+      fetchWithCache('/api/registry').catch(() => {});
+    }, 1200);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -40,95 +47,70 @@ export default function Home() {
 
   // Listen for requests coming from other UI (DetailPanel) to open Issue / GRN flows
   useEffect(() => {
-    function onOpenIssue(e: any) {
+    function onOpenIssue(e: Event) {
       try {
-        const id = e?.detail ?? null;
+        const customEv = e as CustomEvent<string | number | undefined>;
+        const id = customEv?.detail ?? null;
         if (id) sessionStorage.setItem('openItemForISS', String(id));
         setActiveTab('ISS');
-      } catch (err) {}
+      } catch {}
     }
-    function onOpenGrn(e: any) {
+    function onOpenGrn(e: Event) {
       try {
-        const id = e?.detail ?? null;
+        const customEv = e as CustomEvent<string | number | undefined>;
+        const id = customEv?.detail ?? null;
         if (id) sessionStorage.setItem('openItemForGRN', String(id));
         setActiveTab('GRN');
         setGrnView('grn');
-      } catch (err) {}
+      } catch {}
     }
-    function onOpenRegistry(e: any) {
+    function onOpenRegistry() {
       try {
         // When opening registry from elsewhere, ensure the registry tab is shown.
         setActiveTab('REG');
-      } catch (err) {}
+      } catch {}
     }
-    window.addEventListener('open-issue', onOpenIssue as EventListener);
-    window.addEventListener('open-grn', onOpenGrn as EventListener);
-    window.addEventListener('open-registry', onOpenRegistry as EventListener);
+    window.addEventListener('open-issue', onOpenIssue);
+    window.addEventListener('open-grn', onOpenGrn);
+    window.addEventListener('open-registry', onOpenRegistry);
     return () => {
-      window.removeEventListener('open-issue', onOpenIssue as EventListener);
-      window.removeEventListener('open-grn', onOpenGrn as EventListener);
-      window.removeEventListener('open-registry', onOpenRegistry as EventListener);
+      window.removeEventListener('open-issue', onOpenIssue);
+      window.removeEventListener('open-grn', onOpenGrn);
+      window.removeEventListener('open-registry', onOpenRegistry);
     }
   }, []);
 
-  
-
-
   return (
     <div className="app-root" style={{ display: "flex", width: "100%", height: "100vh" }}>
-      <aside className="sidebar">
-        <div className="logo-area">
-          <div className="logo-name">AyurVaidya</div>
-          <div className="logo-sub">All India Institute of<br/>Ayurveda, Faridabad</div>
-          <div className="logo-pill">AIIA · AYUSH</div>
-        </div>
-
-        <nav>
-          <div className="nav-block">
-            <div className="nav-label">Main</div>
-            <div className={`nav-item ${(activeTab as any) !== 'REG' && (activeTab as any) !== 'GRN' && (activeTab as any) !== 'ISS' ? 'active' : ''}`} onClick={() => setActiveTab('CAPEX')}><div className="nav-icon">▦</div> Dashboard</div>
-            <div className={`nav-item ${(activeTab as any) === 'REG' ? 'active' : ''}`} onClick={()=>setActiveTab('REG')}><div className="nav-icon">☰</div> Item Registry</div>
-            <div className={`nav-item ${(activeTab === 'GRN' && grnView === 'grn') ? 'active' : ''}`} onClick={() => { setActiveTab('GRN'); setGrnView('grn'); }}><div className="nav-icon">↓</div> Stock Inward</div>
-            <div className={`nav-item ${(activeTab === 'GRN' && grnView === 'qr') ? 'active' : ''}`} onClick={() => { setActiveTab('GRN'); setGrnView('qr'); }}><div className="nav-icon">▦</div> QR Generator</div>
-            <div className={`nav-item ${activeTab==='ISS'?'active':''}`} onClick={() => setActiveTab('ISS')}><div className="nav-icon">↑</div> Stock Issue</div>
-          </div>
-
-          <div className="nav-block">
-            <div className="nav-label">Insights</div>
-            <div className="nav-item"><div className="nav-icon">⚑</div> Alerts <span className="nav-chip">22</span></div>
-            <div className="nav-item"><div className="nav-icon">≡</div> Reports</div>
-            <div className="nav-item"><div className="nav-icon">✦</div> AI Assistant</div>
-          </div>
-
-          <div className="nav-block">
-            <div className="nav-label">Category</div>
-            <div className="nav-item" style={{ color: "rgba(255,255,255,0.9)" }}>
-              <div className="nav-icon" style={{ color: "#93c5fd" }}>◈</div> CAPEX items
-              <span className="nav-chip amber">3 AMC</span>
-            </div>
-            <div className="nav-item"><div className="nav-icon" style={{ color: "#86efac" }}>◉</div> OPEX items <span className="nav-chip">7</span></div>
-          </div>
-        </nav>
-
-        <div className="sidebar-user">
-          <div className="avatar">RK</div>
-          <div className="user-info">
-            <div className="user-name">Ramesh Kumar</div>
-            <div className="user-role">Store Manager</div>
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        grnView={grnView}
+        setGrnView={setGrnView}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
+      />
 
       <div className="main">
         <header className="topbar">
           <div className="topbar-left">
-            <div className="page-title">Dashboard</div>
+            <button
+              className="sidebar-mobile-toggle"
+              onClick={() => setMobileOpen((prev) => !prev)}
+              aria-label="Toggle navigation menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <div className="page-title">{activeTab === 'REG' ? 'Item Registry' : activeTab === 'GRN' ? 'Stock Inward' : activeTab === 'ISS' ? 'Stock Issue' : 'Dashboard'}</div>
             <div className="breadcrumb">/ <span>{breadcrumbLabel}</span></div>
           </div>
           <div className="topbar-right">
             <div className="status-pill"><div className="status-dot"></div> System online</div>
             <div className="date-chip">{today}</div>
-            
           </div>
         </header>
 

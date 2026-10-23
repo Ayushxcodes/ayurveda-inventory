@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { fetchWithCache } from '../../lib/client-cache';
+
+type WastageData = {
+  totalQty?: number;
+  totalValue?: number;
+  rows?: string[][];
+};
 
 export default function WastageCard(){
   const [rows, setRows] = useState<string[][] | null>(null)
@@ -9,10 +16,24 @@ export default function WastageCard(){
 
   useEffect(()=>{
     let mounted = true
-    fetch('/api/opex/wastage')
-      .then(r=> r.ok ? r.json() : Promise.reject(r))
-      .then((data)=>{ if(!mounted) return; setTotalQty(data.totalQty || 0); setTotalValue(data.totalValue || 0); setRows(Array.isArray(data.rows) ? data.rows : []) })
-      .catch(()=>{ if(!mounted) return; setRows([]); setTotalQty(0); setTotalValue(0) })
+    fetchWithCache<WastageData>('/api/opex/wastage', 30000, (data) => {
+      if(!mounted || !data) return;
+      setTotalQty(data.totalQty || 0);
+      setTotalValue(data.totalValue || 0);
+      setRows(Array.isArray(data.rows) ? data.rows : []);
+    })
+      .then((data)=>{
+        if(!mounted || !data) return;
+        setTotalQty(data.totalQty || 0);
+        setTotalValue(data.totalValue || 0);
+        setRows(Array.isArray(data.rows) ? data.rows : []);
+      })
+      .catch(()=>{
+        if(!mounted) return;
+        setRows([]);
+        setTotalQty(0);
+        setTotalValue(0);
+      })
     return ()=>{ mounted=false }
   },[])
 

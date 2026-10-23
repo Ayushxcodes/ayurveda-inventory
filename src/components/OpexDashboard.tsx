@@ -23,6 +23,8 @@ type OpexItem = {
   createdAt: string | null;
 }
 
+import { fetchWithCache } from '../lib/client-cache';
+
 export default function OpexDashboard(){
   const [items, setItems] = useState<OpexItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,10 +32,24 @@ export default function OpexDashboard(){
 
   useEffect(()=>{
     let mounted = true
-    fetch('/api/opex')
-      .then(r => r.ok ? r.json() : Promise.reject(r))
-      .then((data) => { if (!mounted) return; setItems(Array.isArray(data) ? data : []); setLoading(false); setNow(Date.now()); })
-      .catch(()=>{ if (!mounted) return; setItems([]); setLoading(false); setNow(Date.now()); })
+    fetchWithCache<OpexItem[]>('/api/opex', 30000, (fresh) => {
+      if (!mounted) return;
+      setItems(Array.isArray(fresh) ? fresh : []);
+      setLoading(false);
+      setNow(Date.now());
+    })
+      .then((data) => {
+        if (!mounted) return;
+        setItems(Array.isArray(data) ? data : []);
+        setLoading(false);
+        setNow(Date.now());
+      })
+      .catch(()=>{
+        if (!mounted) return;
+        setItems([]);
+        setLoading(false);
+        setNow(Date.now());
+      })
     return ()=>{ mounted=false }
   }, [])
 

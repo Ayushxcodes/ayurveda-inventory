@@ -22,16 +22,29 @@ type CapexItem = {
   dept: string | null;
 }
 
+import { fetchWithCache } from '../lib/client-cache';
+
 export default function CapexDashboard(){
   const [items, setItems] = useState<CapexItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let mounted = true
-    fetch('/api/capex')
-      .then((r) => r.ok ? r.json() : Promise.reject(r))
-      .then((data) => { if (!mounted) return; setItems(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch(() => { if (!mounted) return; setItems([]); setLoading(false) })
+    fetchWithCache<CapexItem[]>('/api/capex', 30000, (fresh) => {
+      if (!mounted) return;
+      setItems(Array.isArray(fresh) ? fresh : []);
+      setLoading(false);
+    })
+      .then((data) => {
+        if (!mounted) return;
+        setItems(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setItems([]);
+        setLoading(false);
+      });
     return () => { mounted = false }
   }, [])
   if (loading) {

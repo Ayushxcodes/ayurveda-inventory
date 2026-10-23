@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { fetchWithCache, clearClientCache } from "../lib/client-cache";
 import PreviewSection from "./grn/PreviewSection";
 import FefoPreview from "./grn/FefoPreview";
 import SearchResults from "./grn/SearchResults";
@@ -37,16 +38,14 @@ interface FormState {
   notes: string;
 }
 
-// Items are fetched from the server; remove local ITEMS_DB mock
+interface ServerBatch {
+  batchNumber?: string;
+  quantityAvailable?: number | string | null;
+  quantityReceived?: number | string | null;
+  expiryDate?: string | null;
+}
 
-const GRN_HISTORY: GRNRecord[] = [
-  { grn: "GRN-2025-0023", date: "2025-04-21", item: "Brahmi Tail", cat: "OPEX", batch: "BRT-2025-D1", qty: "10,000 ml", supplier: "Kottakkal AVS", invoice: "INV-2025-0044", by: "Ramesh Kumar" },
-  { grn: "GRN-2025-0022", date: "2025-04-18", item: "Cotton Bandages (2 inch)", cat: "OPEX", batch: "JJ-CON-2025-02", qty: "500 Rolls", supplier: "J&J Medical", invoice: "JJ-INV-0881", by: "Ramesh Kumar" },
-  { grn: "GRN-2025-0021", date: "2025-04-15", item: "Ashwagandha Churna", cat: "OPEX", batch: "ASH-2025-B1", qty: "1,800 g", supplier: "Dabur India Ltd.", invoice: "DAB-2025-1120", by: "Ramesh Kumar" },
-  { grn: "GRN-2025-0020", date: "2025-04-10", item: "Guduchi Churna", cat: "OPEX", batch: "GUD-2024-J2", qty: "1,700 g", supplier: "Charak Pharma", invoice: "CHK-2025-0334", by: "Ramesh Kumar" },
-  { grn: "GRN-2025-0019", date: "2025-04-08", item: "Split AC 1.5 Ton", cat: "CAPEX", batch: "DK-AC-002", qty: "1 Pcs", supplier: "Daikin India", invoice: "DK-INV-0092", by: "Ramesh Kumar" },
-  { grn: "GRN-2025-0018", date: "2025-04-02", item: "Surgical Gloves (M)", cat: "OPEX", batch: "ANS-2025-M02", qty: "500 Pairs", supplier: "Ansell Healthcare", invoice: "ANS-INV-2025-11", by: "Ramesh Kumar" },
-];
+// Items are fetched from the server; remove local ITEMS_DB mock
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -93,8 +92,10 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
   useEffect(() => {
     if (activeTab !== "history") return;
     let mounted = true;
-    fetch('/api/grn')
-      .then((r) => r.json())
+    fetchWithCache<GRNRecord[]>('/api/grn', 15000, (fresh) => {
+      if (!mounted) return;
+      if (Array.isArray(fresh)) setGrnHistory(fresh);
+    })
       .then((data) => {
         if (!mounted) return;
         if (Array.isArray(data)) setGrnHistory(data as GRNRecord[])
@@ -107,8 +108,10 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
   useEffect(() => {
     const q = searchQuery.trim();
     if (!q) {
-      setRemoteResults([]);
-      return;
+      const t = setTimeout(() => {
+        setRemoteResults([]);
+      }, 0);
+      return () => clearTimeout(t);
     }
     let mounted = true;
     const t = setTimeout(() => {
@@ -132,25 +135,27 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
       if (pending) {
         sessionStorage.removeItem('openItemForGRN')
         // prefill search / select item
-        selectItemById(pending)
-        setActiveTab('new')
+        setTimeout(() => {
+          selectItemById(pending)
+          setActiveTab('new')
+        }, 0)
       }
-    } catch (e) {}
+    } catch {}
   }, [])
 
   // Also listen for runtime requests from other components (QRGenerator, DetailPanel)
   useEffect(() => {
-    function onOpenGrn(e: any) {
+    function onOpenGrn(e: Event) {
       try {
-        const id = e?.detail ?? null;
+        const id = (e as CustomEvent<string>)?.detail ?? null;
         if (id) {
           selectItemById(String(id))
           setActiveTab('new')
         }
-      } catch (err) {}
+      } catch {}
     }
-    window.addEventListener('open-grn', onOpenGrn as EventListener)
-    return () => window.removeEventListener('open-grn', onOpenGrn as EventListener)
+    window.addEventListener('open-grn', onOpenGrn)
+    return () => window.removeEventListener('open-grn', onOpenGrn)
   }, [])
 
   const handleSave = async () => {
@@ -174,7 +179,8 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
     try {
       const res = await fetch('/api/grn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
-        if (res.ok && data.grn) {
+      if (res.ok && data.grn) {
+        clearClientCache();
         setSuccessGRNId(data.grn)
 
         // If server returned updated item, map and set it locally
@@ -190,15 +196,15 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
               unit: it.unit || selectedItem?.unit || form.unit,
               dept: '',
               currentStock: Array.isArray(it.itemBatches)
-                ? it.itemBatches.reduce((s: number, b: any) => s + Number(b.quantityAvailable ?? b.quantityReceived ?? 0), 0)
+                ? (it.itemBatches as ServerBatch[]).reduce((s: number, b: ServerBatch) => s + Number(b.quantityAvailable ?? b.quantityReceived ?? 0), 0)
                 : selectedItem.currentStock,
               minStock: Number(it.minStockLevel || selectedItem?.minStock || 0),
               batches: Array.isArray(it.itemBatches)
-                ? it.itemBatches.map((b: any) => ({ batchNo: b.batchNumber, qty: Number(b.quantityAvailable ?? b.quantityReceived ?? 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null }))
+                ? (it.itemBatches as ServerBatch[]).map((b: ServerBatch) => ({ batchNo: b.batchNumber || '', qty: Number(b.quantityAvailable ?? b.quantityReceived ?? 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null }))
                 : selectedItem.batches,
             }
             setSelectedItem(mapped)
-          } catch (e) {}
+          } catch {}
         }
 
         // If server returned grnEntry, prepend it to history for immediate visibility
@@ -217,14 +223,14 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
               by: (r.receiver && r.receiver.fullName) || (form.receivedBy || ''),
             }
             setGrnHistory((prev) => [row, ...prev].slice(0, 200))
-          } catch (e) {}
+          } catch {}
         }
 
         setCurrentStep(4)
       } else {
         alert('Failed to save GRN: ' + (data?.error || 'unknown'))
       }
-    } catch (err) {
+    } catch {
       alert('Error saving GRN')
     }
   }
@@ -307,9 +313,9 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
           subcat: data.subCategory || '',
           unit: data.unit || 'ml',
           dept: '',
-          currentStock: Array.isArray(data.itemBatches) ? data.itemBatches.reduce((s: number, b: any) => s + Number(b.quantityAvailable ?? b.quantityReceived ?? 0), 0) : 0,
+          currentStock: Array.isArray(data.itemBatches) ? (data.itemBatches as ServerBatch[]).reduce((s: number, b: ServerBatch) => s + Number(b.quantityAvailable ?? b.quantityReceived ?? 0), 0) : 0,
           minStock: Number(data.minStockLevel || 0),
-          batches: Array.isArray(data.itemBatches) ? data.itemBatches.map((b: any) => ({ batchNo: b.batchNumber, qty: Number(b.quantityAvailable ?? b.quantityReceived ?? 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null })) : [],
+          batches: Array.isArray(data.itemBatches) ? (data.itemBatches as ServerBatch[]).map((b: ServerBatch) => ({ batchNo: b.batchNumber || '', qty: Number(b.quantityAvailable ?? b.quantityReceived ?? 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null })) : [],
         };
         selectItem(mapped);
       })
@@ -320,28 +326,6 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
     setSelectedItem(null);
     setSearchQuery("");
     setShowResults(false);
-  };
-
-  const simulateScan = () => {
-    // Fetch item detail from server instead of using local mock
-    fetch(`/api/items/detail?code=${encodeURIComponent("MED-003")}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data || data.error) return;
-        const mapped: Item = {
-          id: data.itemCode,
-          name: data.itemName,
-          sub: data.itemType || '',
-          category: data.category || 'OPEX',
-          subcat: data.subCategory || '',
-          unit: data.unit || 'ml',
-          dept: '',
-          currentStock: Array.isArray(data.itemBatches) ? data.itemBatches.reduce((s: number, b: any) => s + Number(b.quantityAvailable ?? b.quantityReceived ?? 0), 0) : 0,
-          minStock: Number(data.minStockLevel || 0),
-          batches: Array.isArray(data.itemBatches) ? data.itemBatches.map((b: any) => ({ batchNo: b.batchNumber, qty: Number(b.quantityAvailable ?? b.quantityReceived ?? 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null })) : [],
-        }
-        selectItem(mapped)
-      }).catch(() => {})
   };
 
   const resetAll = () => {
@@ -912,9 +896,8 @@ const CSS = `
   --blue:#185FA5;--blue-light:#e8f1fb;
   --red:#B91C1C;--red-light:#fef2f2;
   --amber:#92400E;--amber-light:#fffbeb;
-  --slate:#3d5a6c;--slate-light:#eef4f8;
-  --text:#0d1f12;--text-mid:#3d6148;--text-dim:#7a9982;--text-mute:#a8bfac;
-  --mono:'DM Mono',monospace;--sans:'Sora',sans-serif;--serif:'Playfair Display',serif;
+  --text:#0d1f12;--text-mid:#244b31;--text-dim:#41674e;--text-mute:#5f836c;
+  --mono:var(--font-mono),'JetBrains Mono',monospace;--sans:var(--font-inter),'Inter',sans-serif;--serif:var(--font-serif),'Playfair Display',serif;
   --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;
 }
 

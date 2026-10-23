@@ -29,7 +29,7 @@ export default function RegistryTable({
         <table>
           <thead>
             <tr>
-              <th>ID</th>
+              <th style={{ width: 130, minWidth: 130 }}>ID</th>
               <th>Item name</th>
               <th>Category</th>
               <th>Sub-type</th>
@@ -67,11 +67,11 @@ export default function RegistryTable({
                   data-id={item.id}
                   onClick={() => onRowClick(item)}
                 >
-                  <td style={{ width: 56 }}>
+                  <td style={{ width: 130, minWidth: 130, whiteSpace: "nowrap" }}>
                     {hasBatches ? (
                       <button className="expand-btn" onClick={(e) => { e.stopPropagation(); toggle(item.id); }} style={{ marginRight: 8 }}>{expanded[item.id] ? '▾' : '▸'}</button>
                     ) : null}
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-dim)" }}>{item.id}</span>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 500, color: "var(--text-dim)", letterSpacing: "0.02em" }}>{item.id}</span>
                   </td>
                   <td>
                     <div className="item-name-cell">

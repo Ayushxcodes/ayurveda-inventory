@@ -7,9 +7,99 @@ import ResultStrip from "./registry/ResultStrip";
 import RegistryTable from "./registry/RegistryTable";
 import DetailPanel from "./registry/DetailPanel";
 
+import { fetchWithCache } from "../lib/client-cache";
+
 // Data will be provided from the DB via the API route `/api/registry`
 
 // Helpers and panel components have been moved to src/components/registry/*
+
+type RawBatch = { batch?: string | null; stock?: number | string | null; expiry?: string | null; supplier?: string | null; price?: number | string | null; location?: string | null };
+type RawRow = {
+  id?: string | number;
+  name?: string;
+  sub?: string | null;
+  category?: string;
+  subcat?: string | null;
+  stock?: number | string | null;
+  min?: number | string | null;
+  max?: number | string | null;
+  unit?: string | null;
+  expiry?: string | null;
+  dept?: string | null;
+  amcExpiry?: string | null;
+  batch?: string | null;
+  batches?: RawBatch[] | null;
+  supplier?: string | null;
+  price?: number | string | null;
+  amc?: string | null;
+  serial?: string | null;
+  purchase?: string | null;
+};
+
+function processItems(data: RawRow[]): Item[] {
+  if (!Array.isArray(data)) return [];
+
+  return data.map((d: RawRow) => {
+    const rawBatches: RawBatch[] = Array.isArray(d.batches) && d.batches.length ? d.batches : (d.batch ? [{ batch: d.batch, stock: d.stock ?? 0, expiry: d.expiry ?? null, supplier: d.supplier ?? null, price: d.price ?? null }] : []);
+    const batches = rawBatches.map(b => ({ batch: String(b.batch ?? ''), stock: Number(b.stock ?? 0), expiry: b.expiry ?? null, supplier: b.supplier ?? undefined, price: b.price ? Number(b.price) : undefined, location: b.location ?? undefined }));
+    const totalStock = batches.reduce((s, x) => s + (x.stock || 0), 0);
+    const earliestExpiry = batches.filter(b => b.expiry).map(b => new Date(b.expiry as string).getTime()).sort((a,b)=>a-b)[0];
+    const expiryStr = earliestExpiry ? new Date(earliestExpiry).toISOString() : (d.expiry ?? null);
+
+    const computeStatus = () => {
+      if (d.category === 'CAPEX') {
+        if (!d.amcExpiry) return 'healthy'
+        const days = Math.round((new Date(d.amcExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        if (days < 0) return 'expired'
+        if (days < 60) return 'amc_due'
+        return 'healthy'
+      }
+      if (batches.length) {
+        for (const b of batches) {
+          if (b.expiry) {
+            const days = Math.round((new Date(b.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            if (days < 0) return 'expired'
+          }
+        }
+        for (const b of batches) {
+          if (b.expiry) {
+            const days = Math.round((new Date(b.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            if (days < 30) return 'expiring'
+          }
+        }
+      } else if (d.expiry) {
+        const days = Math.round((new Date(d.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        if (days < 0) return 'expired'
+        if (days < 30) return 'expiring'
+      }
+      if (d.min && totalStock < Number(d.min)) return 'low_stock'
+      return 'healthy'
+    }
+
+    return {
+      id: String(d.id ?? ''),
+      name: d.name ?? '',
+      sub: d.sub ?? '',
+      category: (d.category === 'CAPEX' ? 'CAPEX' : 'OPEX') as Item['category'],
+      subcat: (d.subcat as Item['subcat']) || null,
+      stock: totalStock || Number(d.stock ?? 0),
+      min: Number(d.min ?? 0),
+      max: Number(d.max ?? 0),
+      unit: d.unit ?? '',
+      expiry: expiryStr ?? null,
+      dept: d.dept ?? '',
+      status: computeStatus() as Item['status'],
+      batch: batches[0]?.batch ?? d.batch ?? undefined,
+      batches: batches as Batch[],
+      supplier: d.supplier ?? undefined,
+      price: Number(d.price ?? (batches[0]?.price ?? 0)),
+      amc: d.amc ?? null,
+      amcExpiry: d.amcExpiry ?? null,
+      serial: d.serial ?? undefined,
+      purchase: d.purchase ?? undefined,
+    }
+  });
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -41,106 +131,24 @@ export default function AyurVaidyaRegistry() {
 
   // Fetch items from the DB-backed API and map to `Item` shape
   useEffect(() => {
-    let mounted = true
-    fetch('/api/registry')
-      .then((r) => r.ok ? r.json() : Promise.reject(r))
+    let mounted = true;
+    fetchWithCache<RawRow[]>('/api/registry', 30000, (fresh) => {
+      if (!mounted) return;
+      setItems(processItems(fresh));
+      setLoading(false);
+    })
       .then((data) => {
-        if (!mounted || !Array.isArray(data)) return
-        type RawBatch = { batch?: string | null; stock?: number | string | null; expiry?: string | null; supplier?: string | null; price?: number | string | null; location?: string | null };
-        type RawRow = {
-          id?: string | number;
-          name?: string;
-          sub?: string | null;
-          category?: string;
-          subcat?: string | null;
-          stock?: number | string | null;
-          min?: number | string | null;
-          max?: number | string | null;
-          unit?: string | null;
-          expiry?: string | null;
-          dept?: string | null;
-          amcExpiry?: string | null;
-          batch?: string | null;
-          batches?: RawBatch[] | null;
-          supplier?: string | null;
-          price?: number | string | null;
-          amc?: string | null;
-          serial?: string | null;
-          purchase?: string | null;
-        }
-
-        const mapped: Item[] = data.map((d: RawRow) => {
-          const rawBatches: RawBatch[] = Array.isArray(d.batches) && d.batches.length ? d.batches : (d.batch ? [{ batch: d.batch, stock: d.stock ?? 0, expiry: d.expiry ?? null, supplier: d.supplier ?? null, price: d.price ?? null }] : []);
-          const batches = rawBatches.map(b => ({ batch: String(b.batch ?? ''), stock: Number(b.stock ?? 0), expiry: b.expiry ?? null, supplier: b.supplier ?? undefined, price: b.price ? Number(b.price) : undefined, location: b.location ?? undefined }));
-          const totalStock = batches.reduce((s, x) => s + (x.stock || 0), 0);
-          const earliestExpiry = batches.filter(b => b.expiry).map(b => new Date(b.expiry as string).getTime()).sort((a,b)=>a-b)[0];
-          const expiryStr = earliestExpiry ? new Date(earliestExpiry).toISOString() : (d.expiry ?? null);
-
-          const computeStatus = () => {
-            if (d.category === 'CAPEX') {
-              if (!d.amcExpiry) return 'healthy'
-              const days = Math.round((new Date(d.amcExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-              if (days < 0) return 'expired'
-              if (days < 60) return 'amc_due'
-              return 'healthy'
-            }
-            // OPEX: consider batch expiries first
-            if (batches.length) {
-              for (const b of batches) {
-                if (b.expiry) {
-                  const days = Math.round((new Date(b.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                  if (days < 0) return 'expired'
-                }
-              }
-              for (const b of batches) {
-                if (b.expiry) {
-                  const days = Math.round((new Date(b.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                  if (days < 30) return 'expiring'
-                }
-              }
-            } else if (d.expiry) {
-              const days = Math.round((new Date(d.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-              if (days < 0) return 'expired'
-              if (days < 30) return 'expiring'
-            }
-            if (d.min && totalStock < Number(d.min)) return 'low_stock'
-            return 'healthy'
-          }
-
-          return {
-            id: String(d.id ?? ''),
-            name: d.name ?? '',
-            sub: d.sub ?? '',
-            category: (d.category === 'CAPEX' ? 'CAPEX' : 'OPEX') as Item['category'],
-            subcat: (d.subcat as Item['subcat']) || null,
-            stock: totalStock || Number(d.stock ?? 0),
-            min: Number(d.min ?? 0),
-            max: Number(d.max ?? 0),
-            unit: d.unit ?? '',
-            expiry: expiryStr ?? null,
-            dept: d.dept ?? '',
-            status: computeStatus() as Item['status'],
-            batch: batches[0]?.batch ?? d.batch ?? undefined,
-            batches: batches as Batch[],
-            supplier: d.supplier ?? undefined,
-            price: Number(d.price ?? (batches[0]?.price ?? 0)),
-            amc: d.amc ?? null,
-            amcExpiry: d.amcExpiry ?? null,
-            serial: d.serial ?? undefined,
-            purchase: d.purchase ?? undefined,
-          }
-        })
-        setItems(mapped)
-        setLoading(false)
+        if (!mounted) return;
+        setItems(processItems(data));
+        setLoading(false);
       })
       .catch(() => {
-        // on error keep items empty
-        setItems([])
-        setLoading(false)
-      })
-    return () => { mounted = false }
-  }, [])
-
+        if (!mounted) return;
+        setItems([]);
+        setLoading(false);
+      });
+    return () => { mounted = false };
+  }, []);
   // ── Filter logic ──────────────────────────────────────────────────────────
 
   const filtered = (() => {

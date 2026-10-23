@@ -25,13 +25,16 @@ type DashboardPayload = {
   amcDue?: { amcId: number; amcNumber?: string; contractEnd?: string; item?: { itemId?: number; itemName?: string } }[]
 }
 
+import { fetchWithCache } from '../lib/client-cache';
+
 export default function AllItemsDashboard() {
   const [data, setData] = useState<DashboardPayload | null>(null)
 
   useEffect(() => {
     let mounted = true
-    fetch('/api/dashboard')
-      .then((r) => r.json())
+    fetchWithCache<DashboardPayload>('/api/dashboard', 20000, (fresh) => {
+      if (mounted) setData(fresh)
+    })
       .then((json) => {
         if (mounted) setData(json)
       })

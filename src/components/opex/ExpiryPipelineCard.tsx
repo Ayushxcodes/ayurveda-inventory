@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
+import Chart from 'chart.js/auto';
 
 type Props = { buckets?: { lt30:number; lt60:number; lt90:number; gt90:number; expired:number }, total?: number }
 
@@ -8,38 +9,36 @@ export default function ExpiryPipelineCard({ buckets, total = 0 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    let chartInstance: any = null;
-    const load = async () => {
-      if (typeof window === 'undefined') return;
-      // load Chart.js if not present
-      if (!(window as any).Chart) {
-        await new Promise((res) => {
-          const s = document.createElement('script');
-          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
-          s.async = true;
-          s.onload = res;
-          document.body.appendChild(s);
-        });
-      }
+    let chartInstance: Chart | null = null;
+    if (canvasRef.current) {
       try {
-        const Chart = (window as any).Chart;
-        if (canvasRef.current) {
-          chartInstance = new Chart(canvasRef.current as HTMLCanvasElement, {
-            type: 'bar',
-            data: { labels: ['< 30 days', '< 60 days', '< 90 days', '> 90 days'], datasets: [{ data: [(buckets?.lt30 ?? 0), (buckets?.lt60 ?? 0), (buckets?.lt90 ?? 0), (buckets?.gt90 ?? 0)], backgroundColor: ['#B91C1C', '#92400E', '#78600A', '#1A6B3C'], borderRadius: 4, borderSkipped: false, barPercentage: 0.6, categoryPercentage: 0.7 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
-          });
-        }
-      } catch (e) {
-        // ignore
-      }
-    };
-    load();
+        chartInstance = new Chart(canvasRef.current, {
+          type: 'bar',
+          data: {
+            labels: ['< 30 days', '< 60 days', '< 90 days', '> 90 days'],
+            datasets: [{
+              data: [(buckets?.lt30 ?? 0), (buckets?.lt60 ?? 0), (buckets?.lt90 ?? 0), (buckets?.gt90 ?? 0)],
+              backgroundColor: ['#B91C1C', '#92400E', '#78600A', '#1A6B3C'],
+              borderRadius: 4,
+              borderSkipped: false,
+              barPercentage: 0.6,
+              categoryPercentage: 0.7
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { grid: { display: false } }, y: { beginAtZero: true } }
+          }
+        });
+      } catch {}
+    }
 
     return () => {
-      try { if (chartInstance) chartInstance.destroy(); } catch(e){}
+      try { if (chartInstance) chartInstance.destroy(); } catch {}
     };
-  }, []);
+  }, [buckets]);
 
   return (
     <div className="card">
@@ -52,7 +51,7 @@ export default function ExpiryPipelineCard({ buckets, total = 0 }: Props) {
             <div className="aleg-item"><div className="aleg-sq" style={{ background: '#78600A' }}></div>Monitor &lt;90d</div>
             <div className="aleg-item"><div className="aleg-sq" style={{ background: '#1A6B3C' }}></div>Healthy</div>
           </div>
-          <a className="view-link" href="#" onClick={(e) => { e.preventDefault(); try { sessionStorage.setItem('registryDeepLink', JSON.stringify({ category: 'OPEX', status: 'expiring', bannerMsg: '← From Dashboard → Expiring in 30 days' })); window.dispatchEvent(new CustomEvent('open-registry')); } catch (err){} }}>
+          <a className="view-link" href="#" onClick={(e) => { e.preventDefault(); try { sessionStorage.setItem('registryDeepLink', JSON.stringify({ category: 'OPEX', status: 'expiring', bannerMsg: '← From Dashboard → Expiring in 30 days' })); window.dispatchEvent(new CustomEvent('open-registry')); } catch {} }}>
             View all →
           </a>
         </div>

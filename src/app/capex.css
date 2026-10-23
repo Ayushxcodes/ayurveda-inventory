@@ -19,12 +19,12 @@
   --amber:      #92400E;
   --amber-dim:  #fffbeb;
   --text:       #0d1f12;
-  --text-mid:   #3d6148;
-  --text-dim:   #7a9982;
-  --text-mute:  #a8bfac;
-  --mono:       'DM Mono', monospace;
-  --sans:       'Sora', sans-serif;
-  --serif:      'Playfair Display', serif;
+  --text-mid:   #244b31;
+  --text-dim:   #41674e;
+  --text-mute:  #5f836c;
+  --mono:       var(--font-mono), 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --sans:       var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --serif:      var(--font-serif), 'Playfair Display', Georgia, serif;
   --r-sm:       6px;
   --r-md:       10px;
   --r-lg:       14px;

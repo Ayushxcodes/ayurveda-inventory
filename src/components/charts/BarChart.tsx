@@ -3,14 +3,19 @@
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, BarElement, BarController, Tooltip, Legend } from 'chart.js';
+import type { ChartData, ChartOptions } from 'chart.js';
 
-// Ensure required Chart.js components are registered in the client
-if (!(Chart as any).__ayur_reg) {
-  Chart.register(CategoryScale, LinearScale, BarElement, BarController, Tooltip, Legend);
-  (Chart as any).__ayur_reg = true;
+interface ChartWithFlag {
+  __ayur_reg?: boolean;
 }
 
-type Props = { data?: any; options?: any };
+// Ensure required Chart.js components are registered in the client
+if (!(Chart as unknown as ChartWithFlag).__ayur_reg) {
+  Chart.register(CategoryScale, LinearScale, BarElement, BarController, Tooltip, Legend);
+  (Chart as unknown as ChartWithFlag).__ayur_reg = true;
+}
+
+type Props = { data?: ChartData<'bar'>; options?: ChartOptions<'bar'> };
 
 export default function BarChart({ data, options }: Props) {
   const defaultData = data ?? {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { fetchWithCache, clearClientCache } from "../lib/client-cache";
 import StepsBar from "./stock-issue/StepsBar";
 import ItemBadges from "./stock-issue/ItemBadges";
 import PreviewPanel from "./stock-issue/PreviewPanel";
@@ -25,6 +26,34 @@ interface Item {
   totalStock: number;
   minStock: number;
   batches: Batch[];
+}
+
+interface ServerBatch {
+  batchNumber?: string;
+  batchNo?: string;
+  batch_number?: string;
+  quantityAvailable?: number | string | null;
+  quantityReceived?: number | string | null;
+  qty?: number | string | null;
+  quantity?: number | string | null;
+  qty_sum?: number | string | null;
+  expiryDate?: string | null;
+  expiry?: string | null;
+}
+
+interface ServerItem {
+  id: string;
+  name: string;
+  sub?: string;
+  category?: 'OPEX' | 'CAPEX';
+  subcat?: string;
+  unit?: string;
+  dept?: string;
+  currentStock?: number | string | null;
+  stock?: number | string | null;
+  minStock?: number | string | null;
+  min_stock_level?: number | string | null;
+  batches?: ServerBatch[];
 }
 
 interface Dept {
@@ -85,9 +114,8 @@ const GLOBAL_CSS = `
   --blue:#185FA5;--blue-light:#e8f1fb;
   --red:#B91C1C;--red-light:#fef2f2;
   --amber:#92400E;--amber-light:#fffbeb;
-  --slate:#3d5a6c;--slate-light:#eef4f8;
-  --text:#0d1f12;--text-mid:#3d6148;--text-dim:#7a9982;--text-mute:#a8bfac;
-  --mono:'DM Mono',monospace;--sans:'Sora',sans-serif;--serif:'Playfair Display',serif;
+  --text:#0d1f12;--text-mid:#244b31;--text-dim:#41674e;--text-mute:#5f836c;
+  --mono:var(--font-mono),'JetBrains Mono',monospace;--sans:var(--font-inter),'Inter',sans-serif;--serif:var(--font-serif),'Playfair Display',serif;
   --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;
 }
 body{font-family:var(--sans);background:var(--bg);color:var(--text)}
@@ -440,9 +468,9 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
             subcat: data.subCategory || '',
             unit: data.unit || 'pcs',
             dept: '',
-            totalStock: Array.isArray(data.itemBatches) ? data.itemBatches.reduce((s: number, b: any) => s + Number(b.quantityAvailable || b.quantityReceived || 0), 0) : 0,
+            totalStock: Array.isArray(data.itemBatches) ? (data.itemBatches as ServerBatch[]).reduce((s: number, b: ServerBatch) => s + Number(b.quantityAvailable || b.quantityReceived || 0), 0) : 0,
             minStock: Number(data.minStockLevel || 0),
-            batches: Array.isArray(data.itemBatches) ? data.itemBatches.map((b: any) => ({ batchNo: b.batchNumber, qty: Number(b.quantityAvailable || b.quantityReceived || 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null })) : [],
+            batches: Array.isArray(data.itemBatches) ? (data.itemBatches as ServerBatch[]).map((b: ServerBatch) => ({ batchNo: b.batchNumber || '', qty: Number(b.quantityAvailable || b.quantityReceived || 0), expiry: b.expiryDate ? b.expiryDate.split('T')[0] : null, status: 'healthy' as const })) : [],
           }
           setSelectedItem(mapped)
           setSearchQuery(mapped.name)
@@ -490,6 +518,7 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
       .then((r) => r.json())
       .then((data) => {
         if (data && data.ok && data.issue) {
+          clearClientCache();
           const dept = selectedDept?.name ?? "—";
           setSuccessMsg(`ISS-${String(data.issue.issueId || data.issue.issue_id || 'XXXX')} recorded. ${qtyInt.toLocaleString()} ${selectedItem.unit} of ${selectedItem.name} issued to ${dept}.`)
           // update local selectedBatch qty
@@ -529,7 +558,10 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   // Debounced server-side search for items
   useEffect(() => {
     const q = searchQuery.trim();
-    if (!q) { setRemoteResults([]); return }
+    if (!q) {
+      const t = setTimeout(() => setRemoteResults([]), 0);
+      return () => clearTimeout(t);
+    }
     let mounted = true;
     const t = setTimeout(() => {
       fetch(`/api/items?q=${encodeURIComponent(q)}`)
@@ -538,7 +570,7 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
           if (!mounted) return;
           if (!Array.isArray(data)) { setRemoteResults([]); return }
           // Map server shape to local Item shape (server returns `currentStock`, `minStock`, `batches`)
-          const mapped = data.map((it: any): Item => ({
+          const mapped = (data as ServerItem[]).map((it: ServerItem): Item => ({
             id: it.id,
             name: it.name,
             sub: it.sub || '',
@@ -548,7 +580,7 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
             dept: it.dept || '',
             totalStock: Number(it.currentStock ?? it.stock ?? 0),
             minStock: Number(it.minStock ?? it.min_stock_level ?? 0),
-            batches: Array.isArray(it.batches) ? it.batches.map((b: any) => ({ batchNo: b.batchNo || b.batch_number, qty: Number(b.qty || b.quantity || b.qty_sum || 0), expiry: b.expiry || null })) : [],
+            batches: Array.isArray(it.batches) ? it.batches.map((b: ServerBatch) => ({ batchNo: b.batchNo || b.batch_number || '', qty: Number(b.qty || b.quantity || b.qty_sum || 0), expiry: b.expiry || null, status: 'healthy' as const })) : [],
           }))
           setRemoteResults(mapped)
         })
@@ -563,11 +595,13 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
       const pending = sessionStorage.getItem('openItemForISS')
       if (pending) {
         sessionStorage.removeItem('openItemForISS')
-        selectItemById(pending)
-        setActiveTab('new')
-        setCurrentStep(1)
+        setTimeout(() => {
+          selectItemById(pending)
+          setActiveTab('new')
+          setCurrentStep(1)
+        }, 0)
       }
-    } catch (e) {}
+    } catch {}
   }, [])
 
   // If a batch was specified by the caller (DetailPanel), pick it after item details load
@@ -577,19 +611,26 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
       if (selectedItem && pendingBatch) {
         const batches = fefoSort(selectedItem)
         const match = batches.find((bb) => bb.batchNo === pendingBatch)
-        if (match) setSelectedBatch(match)
         sessionStorage.removeItem('openItemForISSBatch')
+        if (match) {
+          setTimeout(() => setSelectedBatch(match), 0)
+        }
       }
-    } catch (e) {}
+    } catch {}
   }, [selectedItem])
 
   // Fetch issue history when user switches to history tab
   useEffect(() => {
     if (activeTab !== 'history') return;
     let mounted = true;
-    fetch('/api/issue')
-      .then((r) => r.json())
-      .then((data) => { if (!mounted) return; if (Array.isArray(data)) setIssueHistory(data as IssueRecord[]) })
+    fetchWithCache<IssueRecord[]>('/api/issue', 15000, (fresh) => {
+      if (!mounted) return;
+      if (Array.isArray(fresh)) setIssueHistory(fresh);
+    })
+      .then((data) => {
+        if (!mounted) return;
+        if (Array.isArray(data)) setIssueHistory(data as IssueRecord[])
+      })
       .catch(() => { if (mounted) setIssueHistory([]) });
     return () => { mounted = false }
   }, [activeTab]);

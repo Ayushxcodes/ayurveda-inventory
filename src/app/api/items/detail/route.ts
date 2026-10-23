@@ -1,10 +1,57 @@
-import { PrismaClient } from '@/generated/prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
+import prisma from '@/lib/prisma'
+import { getOrSetCache } from '@/lib/cache'
 import { NextResponse } from 'next/server'
 
-const dbUrl = process.env.DATABASE_URL
-if (!dbUrl) throw new Error('DATABASE_URL is not set')
-const prisma = new PrismaClient({ adapter: new PrismaPg(dbUrl) } as any)
+export const dynamic = 'force-dynamic'
+
+async function fetchItemDetail(code: string) {
+  const it = await prisma.item.findUnique({
+    where: { itemCode: code },
+    select: {
+      itemCode: true,
+      itemName: true,
+      itemType: true,
+      category: true,
+      subCategory: true,
+      unit: true,
+      minStockLevel: true,
+      itemBatches: {
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: {
+          batchId: true,
+          batchNumber: true,
+          quantityReceived: true,
+          quantityAvailable: true,
+          mfgDate: true,
+          expiryDate: true,
+          createdAt: true,
+        },
+      },
+    },
+  })
+
+  if (!it) return null
+
+  return {
+    itemCode: it.itemCode,
+    itemName: it.itemName,
+    itemType: it.itemType,
+    category: it.category,
+    subCategory: it.subCategory,
+    unit: it.unit,
+    minStockLevel: it.minStockLevel?.toString?.() ?? '0',
+    itemBatches: it.itemBatches.map((b) => ({
+      batchId: b.batchId,
+      batchNumber: b.batchNumber,
+      quantityReceived: b.quantityReceived?.toString?.() ?? '0',
+      quantityAvailable: b.quantityAvailable?.toString?.() ?? '0',
+      mfgDate: b.mfgDate ? b.mfgDate.toISOString() : null,
+      expiryDate: b.expiryDate ? b.expiryDate.toISOString() : null,
+      createdAt: b.createdAt ? b.createdAt.toISOString() : null,
+    })),
+  }
+}
 
 export async function GET(req: Request) {
   try {
@@ -12,58 +59,23 @@ export async function GET(req: Request) {
     const code = (url.searchParams.get('code') || '').trim()
     if (!code) return NextResponse.json({ error: 'code required' }, { status: 400 })
 
-    console.time('items.detail.total')
-    console.time('items.detail.query')
-    const it = await prisma.item.findUnique({
-      where: { itemCode: code },
-      select: {
-        itemCode: true,
-        itemName: true,
-        itemType: true,
-        category: true,
-        subCategory: true,
-        unit: true,
-        minStockLevel: true,
-        itemBatches: {
-          orderBy: { createdAt: 'desc' },
-          take: 50,
-          select: {
-            batchId: true,
-            batchNumber: true,
-            quantityReceived: true,
-            quantityAvailable: true,
-            mfgDate: true,
-            expiryDate: true,
-            createdAt: true,
-          }
-        }
-      }
+    const mapped = await getOrSetCache(
+      `api:items:detail:${code}`,
+      () => fetchItemDetail(code),
+      30,
+      ['items', `item:${code}`]
+    )
+
+    if (!mapped) return NextResponse.json({ error: 'item not found' }, { status: 404 })
+
+    return NextResponse.json(mapped, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59',
+      },
     })
-    console.timeEnd('items.detail.query')
-    if (!it) return NextResponse.json({ error: 'item not found' }, { status: 404 })
-
-    const mapped = {
-      itemCode: it.itemCode,
-      itemName: it.itemName,
-      itemType: it.itemType,
-      category: it.category,
-      subCategory: it.subCategory,
-      unit: it.unit,
-      minStockLevel: it.minStockLevel?.toString?.() ?? '0',
-      itemBatches: it.itemBatches.map((b: any) => ({
-        batchId: b.batchId,
-        batchNumber: b.batchNumber,
-        quantityReceived: b.quantityReceived?.toString?.() ?? '0',
-        quantityAvailable: b.quantityAvailable?.toString?.() ?? '0',
-        mfgDate: b.mfgDate ? b.mfgDate.toISOString() : null,
-        expiryDate: b.expiryDate ? b.expiryDate.toISOString() : null,
-        createdAt: b.createdAt ? b.createdAt.toISOString() : null,
-      })),
-    }
-    console.timeEnd('items.detail.total')
-
-    return NextResponse.json(mapped)
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('GET /api/items/detail error:', err)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

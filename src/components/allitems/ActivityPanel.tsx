@@ -5,7 +5,7 @@ type Grn = {
   grnNumber: string
   grnDate: Date | string
   batchNumber?: string
-  quantityReceived?: any
+  quantityReceived?: number | string | null
   item?: { itemName?: string }
 }
 

@@ -1,5 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import jsQR from 'jsqr'
+
+interface BarcodeBoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface DetectedBarcode {
+  rawValue?: string;
+  rawData?: string;
+  boundingBox?: BarcodeBoundingBox;
+}
+
+interface BarcodeDetectorInstance {
+  detect(source: ImageBitmapSource | HTMLVideoElement | ImageBitmap): Promise<DetectedBarcode[]>;
+}
+
+interface BarcodeDetectorConstructor {
+  new (options?: { formats: string[] }): BarcodeDetectorInstance;
+}
+
+type WindowWithBarcodeDetector = Window & typeof globalThis & {
+  BarcodeDetector?: BarcodeDetectorConstructor;
+};
 
 export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (code: string) => void; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -37,11 +63,11 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
           // ensure autoplay works
           try {
             videoRef.current.muted = true
-          } catch (e) {}
-          try { videoRef.current.playsInline = true } catch (e) {}
+          } catch {}
+          try { videoRef.current.playsInline = true } catch {}
           try {
             await videoRef.current.play()
-          } catch (e) {
+          } catch {
             // ignore play errors; will attempt frames anyway
           }
         }
@@ -49,8 +75,8 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
         // create offscreen canvas for jsQR fallback
         canvas = document.createElement('canvas')
         scanLoop()
-      } catch (e: any) {
-        setError(e?.message || 'Could not access camera')
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'Could not access camera')
       }
     }
 
@@ -60,15 +86,15 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
         if (!videoRef.current) return
         const video = videoRef.current
         // Use native BarcodeDetector when available
-        const BarcodeDetectorClass = (window as any).BarcodeDetector
+        const BarcodeDetectorClass = (window as WindowWithBarcodeDetector).BarcodeDetector
         if (BarcodeDetectorClass) {
-            const detector = new BarcodeDetectorClass({ formats: ['qr_code'] })
+          const detector = new BarcodeDetectorClass({ formats: ['qr_code'] })
           // Some platforms perform better if we pass an ImageBitmap instead of the video element
           try {
             let img: ImageBitmap | null = null
             try {
-              img = await createImageBitmap(video as any)
-            } catch (_) {
+              img = await createImageBitmap(video)
+            } catch {
               img = null
             }
             const target = img || video
@@ -77,7 +103,7 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
             if (results && results.length) {
               const res = results[0]
               // boundingBox may be available
-              const bb = (res as any).boundingBox
+              const bb = res.boundingBox
               if (bb && video) {
                 // compute scale from video intrinsic to displayed size
                 const vw = video.videoWidth || 1
@@ -99,8 +125,8 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
               if (!detectTimerRef.current) {
                 detectTimerRef.current = window.setTimeout(() => {
                   detectTimerRef.current = null
-                  const code = res.rawValue || (res as any).rawData || ''
-                  try { stop() } catch (e) {}
+                  const code = res.rawValue || res.rawData || ''
+                  try { stop() } catch {}
                   onDetected(code)
                 }, 350)
               }
@@ -109,7 +135,7 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
               // no results -> clear any visible pointer
               setDetectedBox(null)
             }
-          } catch (detErr) {
+          } catch {
             // detector failed on this frame, continue
           }
         } else {
@@ -123,27 +149,23 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
             let ctx: CanvasRenderingContext2D | null = null
             try {
               ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D
-            } catch (e) {
+            } catch {
               ctx = canvas.getContext('2d')
             }
             if (ctx) {
               try {
                 ctx.drawImage(video, 0, 0, w, h)
-              } catch (err) {
+              } catch {
                 // drawImage may fail if video not ready
               }
               let imageData: ImageData | null = null
               try {
                 imageData = ctx.getImageData(0, 0, w, h)
-              } catch (gdErr) {
-                // getImageData may fail; show hint
-                // console.warn('getImageData failed', gdErr)
+              } catch {
                 imageData = null
               }
               if (imageData) {
                 try {
-                  const jsqrMod = await import('jsqr')
-                  const jsQR = (jsqrMod && (jsqrMod as any).default) || (jsqrMod as any)
                   const qr = jsQR(imageData.data, w, h)
                   if (qr) {
                     const tl = qr.location.topLeftCorner
@@ -162,7 +184,7 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
                     if (!detectTimerRef.current) {
                       detectTimerRef.current = window.setTimeout(() => {
                         detectTimerRef.current = null
-                        try { stop() } catch (e) {}
+                        try { stop() } catch {}
                         onDetected(qr.data)
                       }, 350)
                     }
@@ -170,17 +192,16 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
                   } else {
                     setDetectedBox(null)
                   }
-                } catch (impErr) {
+                } catch {
                   // import or decode failed
-                  // console.warn('jsQR error', impErr)
                 }
               }
             }
-          } catch (e) {
+          } catch {
             // ignore
           }
         }
-      } catch (e) {
+      } catch {
         // ignore detection errors
       }
       raf = requestAnimationFrame(scanLoop)
@@ -199,7 +220,7 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
     return () => {
       mounted = false
       stop()
-      try { cancelAnimationFrame(raf) } catch (e) {}
+      try { cancelAnimationFrame(raf) } catch {}
       if (detectTimerRef.current) {
         clearTimeout(detectTimerRef.current)
         detectTimerRef.current = null
@@ -212,11 +233,11 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
     setUploadError(null)
     try {
       // Try native BarcodeDetector first
-      const BarcodeDetectorClass = (window as any).BarcodeDetector
+      const BarcodeDetectorClass = (window as WindowWithBarcodeDetector).BarcodeDetector
       let bitmap: ImageBitmap | null = null
       try {
-        bitmap = await createImageBitmap(file as any)
-      } catch (e) {
+        bitmap = await createImageBitmap(file)
+      } catch {
         bitmap = null
       }
 
@@ -226,24 +247,24 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
           const results = await detector.detect(bitmap)
           if (results && results.length) {
             const res = results[0]
-            const code = res.rawValue || (res as any).rawData || ''
-            try { if (streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop()) } catch(e){}
+            const code = res.rawValue || res.rawData || ''
+            try { if (streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop()) } catch {}
             setScanning(false)
-            try { bitmap.close && bitmap.close() } catch(e){}
+            try { bitmap.close() } catch {}
             onDetected(code)
             return
           }
-        } catch (e) {
+        } catch {
           // fall through to jsQR fallback
         } finally {
-          try { bitmap && (bitmap as any).close && (bitmap as any).close() } catch(e){}
+          try { bitmap?.close?.() } catch {}
         }
       }
 
       // jsQR fallback: draw image to canvas and decode
       try {
         let imgBitmap: ImageBitmap | null = null
-        try { imgBitmap = await createImageBitmap(file as any) } catch (e) { imgBitmap = null }
+        try { imgBitmap = await createImageBitmap(file) } catch { imgBitmap = null }
         const canvas = document.createElement('canvas')
         const w = (imgBitmap && imgBitmap.width) || 1024
         const h = (imgBitmap && imgBitmap.height) || 1024
@@ -251,8 +272,10 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
         canvas.height = h
         const ctx = canvas.getContext('2d')
         if (!ctx) throw new Error('Canvas not available')
-        if (imgBitmap) ctx.drawImage(imgBitmap as any, 0, 0, w, h)
-        else {
+        if (imgBitmap) {
+          ctx.drawImage(imgBitmap, 0, 0, w, h)
+          try { imgBitmap.close() } catch {}
+        } else {
           // fallback: load via Image
           const img = await new Promise<HTMLImageElement>((res, rej) => {
             const i = new Image()
@@ -264,25 +287,23 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
           URL.revokeObjectURL(img.src)
         }
         let imageData: ImageData | null = null
-        try { imageData = ctx.getImageData(0, 0, w, h) } catch (e) { imageData = null }
+        try { imageData = ctx.getImageData(0, 0, w, h) } catch { imageData = null }
         if (imageData) {
-          const jsqrMod = await import('jsqr')
-          const jsQR = (jsqrMod && (jsqrMod as any).default) || (jsqrMod as any)
           const qr = jsQR(imageData.data, w, h)
           if (qr) {
-            try { if (streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop()) } catch(e){}
+            try { if (streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop()) } catch {}
             setScanning(false)
             onDetected(qr.data)
             return
           }
         }
-      } catch (e: any) {
+      } catch {
         // decoding failed
       }
 
       setUploadError('No QR code found in the selected image')
-    } catch (e: any) {
-      setUploadError(e?.message || 'Failed to process image')
+    } catch (e: unknown) {
+      setUploadError(e instanceof Error ? e.message : 'Failed to process image')
     }
   }
 
@@ -303,7 +324,7 @@ export default function CameraQRScanner({ onDetected, onClose }: { onDetected: (
       <div style={{ width: 480, maxWidth: '94%', background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
         <div style={{ padding: 12, borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontWeight: 600 }}>Scan QR</div>
-          <button onClick={() => { try { if (streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop()) } catch(e){}; onClose() }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>✕</button>
+          <button onClick={() => { try { if (streamRef.current) streamRef.current.getTracks().forEach(t=>t.stop()) } catch {}; onClose() }} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>✕</button>
         </div>
         <div style={{ padding: 16, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
           {error ? (
