@@ -6,6 +6,7 @@ import SearchResults from "./grn/SearchResults";
 import SelectedItemCard from "./grn/SelectedItemCard";
 import CameraQRScanner from "./qr/CameraQRScanner";
 import QRGenerator from "./qr/QRGenerator";
+import type { SessionUser } from "../lib/auth/roles";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 import { Item, Batch } from "../types/items";
@@ -57,7 +58,7 @@ const daysUntil = (d: string) =>
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
+export default function AyurVaidyaGRN({ grnView, user }: { grnView?: 'grn' | 'qr'; user: SessionUser }) {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -71,7 +72,7 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
     batchNo: "", qty: "", unit: "ml", mfgDate: "", expiryDate: "",
     expiryType: "date", supplierName: "", invoiceNo: "", invoiceDate: "",
     pricePerUnit: "", storeLocation: "Main pharmacy store",
-    receivedBy: "Ramesh Kumar", notes: "",
+    receivedBy: user.fullName, notes: "",
   });
 
   const searchRef = useRef<HTMLDivElement>(null);
@@ -172,7 +173,6 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
       invoiceDate: form.invoiceDate || null,
       pricePerUnit: form.pricePerUnit || null,
       storeLocation: form.storeLocation || null,
-      receivedBy: form.receivedBy || null,
       notes: form.notes || null,
     }
 
@@ -336,7 +336,7 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
       batchNo: "", qty: "", unit: "ml", mfgDate: "", expiryDate: "",
       expiryType: "date", supplierName: "", invoiceNo: "", invoiceDate: "",
       pricePerUnit: "", storeLocation: "Main pharmacy store",
-      receivedBy: "Ramesh Kumar", notes: "",
+      receivedBy: user.fullName, notes: "",
     });
     setCurrentStep(1);
     setActiveTab("new");
@@ -696,8 +696,9 @@ export default function AyurVaidyaGRN({ grnView }: { grnView?: 'grn' | 'qr' }) {
                         </div>
                         <div className="field">
                           <label>Received by</label>
-                          <input type="text" value={form.receivedBy}
-                            onChange={(e) => setForm((f) => ({ ...f, receivedBy: e.target.value }))} />
+                          <input type="text" value={form.receivedBy} readOnly
+                            style={{ background: "var(--bg)", color: "var(--text-dim)" }} />
+                          <div className="field-hint">Recorded from your signed-in account</div>
                         </div>
                       </div>
                       <div className="field">

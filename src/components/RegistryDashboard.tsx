@@ -8,6 +8,7 @@ import RegistryTable from "./registry/RegistryTable";
 import DetailPanel from "./registry/DetailPanel";
 
 import { fetchWithCache } from "../lib/client-cache";
+import { canIssueStock, canReceiveStock, type SessionUser } from "../lib/auth/roles";
 
 // Data will be provided from the DB via the API route `/api/registry`
 
@@ -103,7 +104,7 @@ function processItems(data: RawRow[]): Item[] {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AyurVaidyaRegistry() {
+export default function AyurVaidyaRegistry({ user }: { user: SessionUser }) {
   const [filters, setFilters] = useState<FilterState>({
     category: "all",
     subcat: null,
@@ -374,7 +375,12 @@ export default function AyurVaidyaRegistry() {
       </div>
 
       {/* ── Detail Panel ───────────────────────────────────────── */}
-      <DetailPanel item={detailItem} onClose={() => setDetailItem(null)} />
+      <DetailPanel
+        item={detailItem}
+        onClose={() => setDetailItem(null)}
+        canIssue={canIssueStock(user.role)}
+        canReceive={canReceiveStock(user.role)}
+      />
 
       {/* ── Demo toolbar ───────────────────────────────────────── */}
       <div className="demo-bar">

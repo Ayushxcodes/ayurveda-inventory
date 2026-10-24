@@ -1,5 +1,7 @@
 import prisma from '@/lib/prisma'
 import { getOrSetCache } from '@/lib/cache'
+import { apiGuard, noStoreJson } from '@/lib/auth/guards'
+import { CATALOG_ROLES } from '@/lib/auth/roles'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -54,10 +56,13 @@ async function fetchItemDetail(code: string) {
 }
 
 export async function GET(req: Request) {
+  const auth = await apiGuard(CATALOG_ROLES)
+  if (auth.response) return auth.response
+
   try {
     const url = new URL(req.url)
     const code = (url.searchParams.get('code') || '').trim()
-    if (!code) return NextResponse.json({ error: 'code required' }, { status: 400 })
+    if (!code) return noStoreJson({ error: 'code required' }, { status: 400 })
 
     const mapped = await getOrSetCache(
       `api:items:detail:${code}`,
@@ -66,13 +71,9 @@ export async function GET(req: Request) {
       ['items', `item:${code}`]
     )
 
-    if (!mapped) return NextResponse.json({ error: 'item not found' }, { status: 404 })
+    if (!mapped) return noStoreJson({ error: 'item not found' }, { status: 404 })
 
-    return NextResponse.json(mapped, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59',
-      },
-    })
+    return noStoreJson(mapped)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('GET /api/items/detail error:', err)

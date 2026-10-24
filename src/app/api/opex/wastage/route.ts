@@ -1,5 +1,7 @@
 import prisma from '@/lib/prisma'
 import { getOrSetCache } from '@/lib/cache'
+import { apiGuard, noStoreJson, resolveDepartmentScope } from '@/lib/auth/guards'
+import { REPORT_ROLES } from '@/lib/auth/roles'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -16,17 +18,30 @@ type WastageQueryResult = {
   rows?: WastageRowItem[] | null
 }
 
-async function fetchWastageData() {
-  const wastageCombinedSql = `
+async function fetchWastageData(deptId: number | null) {
+  const res = await prisma.$queryRaw<WastageQueryResult[]>`
     SELECT
-      COALESCE((SELECT SUM(quantity_disposed)::numeric FROM disposal_log WHERE date_trunc('month', disposal_date) = date_trunc('month', current_date)), 0) AS total_qty,
-      COALESCE((SELECT SUM(COALESCE(value_written_off,0))::numeric FROM disposal_log WHERE date_trunc('month', disposal_date) = date_trunc('month', current_date)), 0) AS total_value,
+      COALESCE((
+        SELECT SUM(d.quantity_disposed)::numeric
+        FROM disposal_log d
+        JOIN items i ON i.item_id = d.item_id
+        WHERE date_trunc('month', d.disposal_date) = date_trunc('month', current_date)
+          AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)
+      ), 0) AS total_qty,
+      COALESCE((
+        SELECT SUM(COALESCE(d.value_written_off, 0))::numeric
+        FROM disposal_log d
+        JOIN items i ON i.item_id = d.item_id
+        WHERE date_trunc('month', d.disposal_date) = date_trunc('month', current_date)
+          AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)
+      ), 0) AS total_value,
       (
         SELECT COALESCE(json_agg(r), '[]'::json) FROM (
-          SELECT i.item_name AS name, SUM(d.quantity_disposed)::numeric AS qty, SUM(COALESCE(d.value_written_off,0))::numeric AS value
+          SELECT i.item_name AS name, SUM(d.quantity_disposed)::numeric AS qty, SUM(COALESCE(d.value_written_off, 0))::numeric AS value
           FROM disposal_log d
           JOIN items i ON i.item_id = d.item_id
           WHERE date_trunc('month', d.disposal_date) = date_trunc('month', current_date)
+            AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)
           GROUP BY i.item_name
           ORDER BY qty DESC
           LIMIT 6
@@ -34,9 +49,7 @@ async function fetchWastageData() {
       ) AS rows;
   `
 
-  const res = await prisma.$queryRawUnsafe<WastageQueryResult[]>(wastageCombinedSql)
   const first = res[0] || {}
-
   const totalQty = Number(first.total_qty || 0)
   const totalValue = Number(first.total_value || 0)
   const rawRows: WastageRowItem[] = Array.isArray(first.rows) ? first.rows : []
@@ -52,19 +65,23 @@ async function fetchWastageData() {
 }
 
 export async function GET() {
+  const auth = await apiGuard(REPORT_ROLES)
+  if (auth.response) return auth.response
+
+  const scope = resolveDepartmentScope(auth.user)
+  if (!scope) {
+    return noStoreJson({ error: 'No department assigned to this HOD account' }, { status: 403 })
+  }
+
   try {
     const data = await getOrSetCache(
-      'api:opex:wastage',
-      () => fetchWastageData(),
+      `api:opex:wastage:${scope.cacheScope}`,
+      () => fetchWastageData(scope.deptId),
       30,
       ['opex', 'wastage']
     )
 
-    return NextResponse.json(data, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59',
-      },
-    })
+    return noStoreJson(data)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('GET /api/opex/wastage error:', err)

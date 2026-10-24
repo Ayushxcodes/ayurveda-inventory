@@ -1,17 +1,18 @@
 "use client";
 
 import React from "react";
+import AccountMenu from "./AccountMenu";
+import { canAccessTab, type AppTab, type SessionUser } from "@/lib/auth/roles";
 import "./sidebar.css";
 
-export type NavTab = "ALL" | "CAPEX" | "OPEX" | "REG" | "GRN" | "ISS";
-
 interface SidebarProps {
-  activeTab: NavTab;
-  setActiveTab: (tab: NavTab) => void;
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
   grnView: "grn" | "qr";
   setGrnView: (view: "grn" | "qr") => void;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
+  user: SessionUser;
 }
 
 export default function Sidebar({
@@ -21,6 +22,7 @@ export default function Sidebar({
   setGrnView,
   mobileOpen = false,
   onCloseMobile,
+  user,
 }: SidebarProps) {
   const isDashboardActive =
     activeTab === "ALL" ||
@@ -29,6 +31,14 @@ export default function Sidebar({
       activeTab !== "ISS" &&
       activeTab !== "CAPEX" &&
       activeTab !== "OPEX");
+
+  const canOpenRegistry = canAccessTab(user.role, "REG");
+  const canOpenCapex = canAccessTab(user.role, "CAPEX");
+  const canOpenOpex = canAccessTab(user.role, "OPEX");
+  const canOpenGrn = canAccessTab(user.role, "GRN");
+  const canOpenIssue = canAccessTab(user.role, "ISS");
+  const showInsights = canOpenRegistry || canOpenCapex || canOpenOpex;
+  const showCategories = canOpenCapex || canOpenOpex;
 
   return (
     <>
@@ -124,218 +134,226 @@ export default function Sidebar({
             </div>
 
             {/* Item Registry */}
-            <div
-              className={`nav-item ${activeTab === "REG" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("REG");
-                if (onCloseMobile) onCloseMobile();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="nav-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M4 6h16M4 12h16M4 18h10" strokeLinecap="round" />
-                  <circle cx="18" cy="18" r="3" stroke="currentColor" />
-                  <path d="M20.2 20.2L22 22" strokeLinecap="round" />
-                </svg>
+            {canOpenRegistry && (
+              <div
+                className={`nav-item ${activeTab === "REG" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("REG");
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M4 6h16M4 12h16M4 18h10" strokeLinecap="round" />
+                    <circle cx="18" cy="18" r="3" stroke="currentColor" />
+                    <path d="M20.2 20.2L22 22" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <span>Item Registry</span>
               </div>
-              <span>Item Registry</span>
-            </div>
+            )}
 
             {/* Stock Inward (GRN) */}
-            <div
-              className={`nav-item ${activeTab === "GRN" && grnView === "grn" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("GRN");
-                setGrnView("grn");
-                if (onCloseMobile) onCloseMobile();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="nav-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M12 3v12m0 0l-4-4m4 4l4-4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" strokeLinecap="round" />
-                </svg>
+            {canOpenGrn && (
+              <div
+                className={`nav-item ${activeTab === "GRN" && grnView === "grn" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("GRN");
+                  setGrnView("grn");
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 3v12m0 0l-4-4m4 4l4-4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <span>Stock Inward</span>
               </div>
-              <span>Stock Inward</span>
-            </div>
+            )}
 
             {/* QR Generator */}
-            <div
-              className={`nav-item ${activeTab === "GRN" && grnView === "qr" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("GRN");
-                setGrnView("qr");
-                if (onCloseMobile) onCloseMobile();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="nav-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" />
-                  <rect x="15" y="3" width="6" height="6" rx="1" stroke="currentColor" />
-                  <rect x="3" y="15" width="6" height="6" rx="1" stroke="currentColor" />
-                  <path d="M15 15h2v2h-2zM19 15h2v2h-2zM15 19h2v2h-2zM19 19h2v2h-2z" fill="currentColor" />
-                </svg>
+            {canOpenGrn && (
+              <div
+                className={`nav-item ${activeTab === "GRN" && grnView === "qr" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("GRN");
+                  setGrnView("qr");
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" />
+                    <rect x="15" y="3" width="6" height="6" rx="1" stroke="currentColor" />
+                    <rect x="3" y="15" width="6" height="6" rx="1" stroke="currentColor" />
+                    <path d="M15 15h2v2h-2zM19 15h2v2h-2zM15 19h2v2h-2zM19 19h2v2h-2z" fill="currentColor" />
+                  </svg>
+                </div>
+                <span>QR Generator</span>
               </div>
-              <span>QR Generator</span>
-            </div>
+            )}
 
             {/* Stock Issue */}
-            <div
-              className={`nav-item ${activeTab === "ISS" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("ISS");
-                if (onCloseMobile) onCloseMobile();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="nav-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M12 15V3m0 0l-4 4m4-4l4 4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" strokeLinecap="round" />
-                </svg>
+            {canOpenIssue && (
+              <div
+                className={`nav-item ${activeTab === "ISS" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("ISS");
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 15V3m0 0l-4 4m4-4l4 4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <span>Stock Issue</span>
               </div>
-              <span>Stock Issue</span>
-            </div>
+            )}
           </div>
 
           {/* Insights Block */}
-          <div className="nav-block">
-            <div className="nav-label">Insights & Audits</div>
+          {showInsights && (
+            <div className="nav-block">
+              <div className="nav-label">Insights &amp; Audits</div>
 
-            {/* Alerts */}
-            <div
-              className="nav-item"
-              onClick={() => {
-                // Focus on items needing attention
-                try {
-                  sessionStorage.setItem(
-                    "registryDeepLink",
-                    JSON.stringify({
-                      status: "critical",
-                      bannerMsg: "← All critical and expiring inventory alerts",
-                    })
-                  );
-                  window.dispatchEvent(new CustomEvent("open-registry"));
-                } catch {}
-                setActiveTab("REG");
-                if (onCloseMobile) onCloseMobile();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="nav-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M13.73 21a2 2 0 01-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <span>Alerts</span>
-              <span className="nav-chip">22</span>
-            </div>
+              {/* Alerts */}
+              {canOpenRegistry && (
+                <div
+                  className="nav-item"
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem(
+                        "registryDeepLink",
+                        JSON.stringify({
+                          status: "critical",
+                          bannerMsg: "← All critical and expiring inventory alerts",
+                        })
+                      );
+                      window.dispatchEvent(new CustomEvent("open-registry"));
+                    } catch {}
+                    setActiveTab("REG");
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M13.73 21a2 2 0 01-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <span>Alerts</span>
+                </div>
+              )}
 
-            {/* Reports */}
-            <div
-              className="nav-item"
-              onClick={() => {
-                setActiveTab("CAPEX");
-                if (onCloseMobile) onCloseMobile();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="nav-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <span>AMC Reports</span>
-            </div>
+              {/* Reports */}
+              {canOpenCapex && (
+                <div
+                  className="nav-item"
+                  onClick={() => {
+                    setActiveTab("CAPEX");
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <span>AMC Reports</span>
+                </div>
+              )}
 
-            {/* AI Assistant */}
-            <div
-              className="nav-item"
-              onClick={() => {
-                setActiveTab("OPEX");
-                if (onCloseMobile) onCloseMobile();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="nav-icon" style={{ color: "#c084fc" }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M12 2l2.4 5.6L20 10l-4.4 4 1.4 6-5-3.2-5 3.2 1.4-6L4 10l5.6-2.4L12 2z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <span>AI Anomaly ML</span>
+              {/* AI Assistant */}
+              {canOpenOpex && (
+                <div
+                  className="nav-item"
+                  onClick={() => {
+                    setActiveTab("OPEX");
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="nav-icon" style={{ color: "#c084fc" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M12 2l2.4 5.6L20 10l-4.4 4 1.4 6-5-3.2-5 3.2 1.4-6L4 10l5.6-2.4L12 2z" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <span>AI Anomaly ML</span>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Categories Block */}
-          <div className="nav-block">
-            <div className="nav-label">Inventory Categories</div>
+          {showCategories && (
+            <div className="nav-block">
+              <div className="nav-label">Inventory Categories</div>
 
-            {/* CAPEX items */}
-            <div
-              className={`nav-item ${activeTab === "CAPEX" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("CAPEX");
-                if (onCloseMobile) onCloseMobile();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="nav-icon" style={{ color: "#93c5fd" }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" />
-                  <path d="M8 21h8M12 17v4" strokeLinecap="round" />
-                </svg>
-              </div>
-              <span>CAPEX Assets</span>
-              <span className="nav-chip amber">3 AMC</span>
-            </div>
+              {/* CAPEX items */}
+              {canOpenCapex && (
+                <div
+                  className={`nav-item ${activeTab === "CAPEX" ? "active" : ""}`}
+                  onClick={() => {
+                    setActiveTab("CAPEX");
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="nav-icon" style={{ color: "#93c5fd" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" />
+                      <path d="M8 21h8M12 17v4" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <span>CAPEX Assets</span>
+                </div>
+              )}
 
-            {/* OPEX items */}
-            <div
-              className={`nav-item ${activeTab === "OPEX" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("OPEX");
-                if (onCloseMobile) onCloseMobile();
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="nav-icon" style={{ color: "#86efac" }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M10 2v4a2 2 0 002 2h0a2 2 0 002-2V2M14 6l4.5 9A4 4 0 0115 21H9a4 4 0 01-3.5-6L10 6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M7 16h10" strokeLinecap="round" />
-                </svg>
-              </div>
-              <span>OPEX Consumables</span>
-              <span className="nav-chip green">Active</span>
+              {/* OPEX items */}
+              {canOpenOpex && (
+                <div
+                  className={`nav-item ${activeTab === "OPEX" ? "active" : ""}`}
+                  onClick={() => {
+                    setActiveTab("OPEX");
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="nav-icon" style={{ color: "#86efac" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M10 2v4a2 2 0 002 2h0a2 2 0 002-2V2M14 6l4.5 9A4 4 0 0115 21H9a4 4 0 01-3.5-6L10 6" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M7 16h10" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <span>OPEX Consumables</span>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </nav>
 
         {/* ── User Profile Card Footer ────────────────────────── */}
         <div className="sidebar-user">
-          <div className="user-card">
-            <div className="avatar-wrapper">
-              <div className="avatar">RK</div>
-              <span className="avatar-dot" />
-            </div>
-            <div className="user-info">
-              <div className="user-name">Ramesh Kumar</div>
-              <div className="user-role">Store Manager</div>
-              <div className="user-badge">● Online · AYUSH Verified</div>
-            </div>
-          </div>
+          <AccountMenu user={user} />
         </div>
       </aside>
     </>

@@ -1,10 +1,12 @@
 import prisma from '@/lib/prisma'
 import { getOrSetCache } from '@/lib/cache'
+import { apiGuard, noStoreJson, resolveDepartmentScope } from '@/lib/auth/guards'
+import { ROLES, type Role } from '@/lib/auth/roles'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-async function fetchDashboardData() {
+async function fetchDashboardData(role: Role, deptId: number | null) {
   const now = new Date()
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const in30 = new Date()
@@ -12,15 +14,13 @@ async function fetchDashboardData() {
   const in60 = new Date()
   in60.setDate(in60.getDate() + 60)
 
-  // Single unified mega-query: runs all counts, recent GRNs, expiring batches,
-  // low stock items, and upcoming AMC contracts in ONE database round-trip!
   const rows = await prisma.$queryRaw<Record<string, unknown>[]>`
     SELECT
-      (SELECT COUNT(*)::int FROM items WHERE is_active = true) AS "totalItems",
-      (SELECT COUNT(*)::int FROM items WHERE is_active = true AND category = 'CAPEX') AS "capexCount",
-      (SELECT COUNT(*)::int FROM items WHERE is_active = true AND category = 'OPEX') AS "opexCount",
-      (SELECT COUNT(*)::int FROM alerts WHERE status = 'active') AS "activeAlerts",
-      (SELECT COUNT(*)::int FROM grn_entries WHERE grn_date >= ${firstDayOfMonth}) AS "grnThisMonth",
+      (SELECT COUNT(*)::int FROM items WHERE is_active = true AND (${deptId}::int IS NULL OR primary_dept_id = ${deptId}::int)) AS "totalItems",
+      (SELECT COUNT(*)::int FROM items WHERE is_active = true AND category = 'CAPEX' AND (${deptId}::int IS NULL OR primary_dept_id = ${deptId}::int)) AS "capexCount",
+      (SELECT COUNT(*)::int FROM items WHERE is_active = true AND category = 'OPEX' AND (${deptId}::int IS NULL OR primary_dept_id = ${deptId}::int)) AS "opexCount",
+      (SELECT COUNT(*)::int FROM alerts a JOIN items i ON i.item_id = a.item_id WHERE a.status = 'active' AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)) AS "activeAlerts",
+      (SELECT COUNT(*)::int FROM grn_entries g JOIN items i ON i.item_id = g.item_id WHERE g.grn_date >= ${firstDayOfMonth} AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)) AS "grnThisMonth",
       (
         SELECT COALESCE(json_agg(rg), '[]'::json) FROM (
           SELECT
@@ -32,6 +32,7 @@ async function fetchDashboardData() {
             json_build_object('itemId', i.item_id, 'itemName', i.item_name) AS item
           FROM grn_entries g
           LEFT JOIN items i ON i.item_id = g.item_id
+          WHERE (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)
           ORDER BY g.grn_date DESC
           LIMIT 5
         ) rg
@@ -47,6 +48,7 @@ async function fetchDashboardData() {
           FROM item_batches b
           JOIN items i ON i.item_id = b.item_id
           WHERE b.expiry_date >= CURRENT_DATE AND b.expiry_date <= ${in30} AND b.quantity_available > 0
+            AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)
           ORDER BY b.expiry_date ASC
           LIMIT 6
         ) exp
@@ -59,7 +61,7 @@ async function fetchDashboardData() {
             COALESCE(SUM(b.quantity_available), 0)::int AS "totalAvailable"
           FROM items i
           LEFT JOIN item_batches b ON b.item_id = i.item_id
-          WHERE i.is_active = true
+          WHERE i.is_active = true AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)
           GROUP BY i.item_id, i.item_name, i.min_stock_level
           HAVING i.min_stock_level > COALESCE(SUM(b.quantity_available), 0)
           ORDER BY i.item_id
@@ -76,6 +78,7 @@ async function fetchDashboardData() {
           FROM amc_contracts a
           JOIN items i ON i.item_id = a.item_id
           WHERE a.contract_end >= CURRENT_DATE AND a.contract_end <= ${in60} AND a.status = 'active'
+            AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)
           ORDER BY a.contract_end ASC
           LIMIT 6
         ) ad
@@ -84,12 +87,20 @@ async function fetchDashboardData() {
 
   const r = rows[0] || {}
 
-  return {
+  const counts = {
     totalItems: Number(r.totalItems ?? 0),
     capexCount: Number(r.capexCount ?? 0),
     opexCount: Number(r.opexCount ?? 0),
     activeAlerts: Number(r.activeAlerts ?? 0),
     grnThisMonth: Number(r.grnThisMonth ?? 0),
+  }
+
+  if (role === 'requester') {
+    return counts
+  }
+
+  return {
+    ...counts,
     recentGrns: Array.isArray(r.recentGrns) ? r.recentGrns : [],
     expiring: Array.isArray(r.expiring) ? r.expiring : [],
     lowStock: Array.isArray(r.lowStock) ? r.lowStock : [],
@@ -98,19 +109,25 @@ async function fetchDashboardData() {
 }
 
 export async function GET() {
+  const auth = await apiGuard(ROLES)
+  if (auth.response) return auth.response
+
+  const scope = resolveDepartmentScope(auth.user)
+  if (!scope) {
+    return noStoreJson({ error: 'No department assigned to this HOD account' }, { status: 403 })
+  }
+
+  const cacheScope = auth.user.role === 'requester' ? 'requester' : scope.cacheScope
+
   try {
     const data = await getOrSetCache(
-      'api:dashboard',
-      () => fetchDashboardData(),
-      20, // 20s TTL
+      `api:dashboard:${cacheScope}`,
+      () => fetchDashboardData(auth.user.role, scope.deptId),
+      20,
       ['dashboard']
     )
 
-    return NextResponse.json(data, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=59',
-      },
-    })
+    return noStoreJson(data)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('GET /api/dashboard error:', err)

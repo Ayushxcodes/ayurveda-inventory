@@ -14,6 +14,25 @@ interface CacheItem<T> {
 const clientCache = new Map<string, CacheItem<unknown>>();
 const activeFetches = new Map<string, Promise<unknown>>();
 
+function redirectToLogin() {
+  clearClientCache();
+  if (typeof window === 'undefined') return;
+  if (window.location.pathname === '/login') return;
+  const next = `${window.location.pathname}${window.location.search}`;
+  window.location.assign(`/login?next=${encodeURIComponent(next)}`);
+}
+
+async function readJsonResponse(response: Response): Promise<unknown> {
+  if (response.status === 401) {
+    redirectToLogin();
+    throw new Error('Unauthorized');
+  }
+  if (!response.ok) {
+    throw response;
+  }
+  return response.json();
+}
+
 export async function fetchWithCache<T>(
   url: string,
   ttlMs = 30000,
@@ -32,7 +51,7 @@ export async function fetchWithCache<T>(
     // Background revalidate if not already fetching
     if (!activeFetches.has(url)) {
       const bgPromise = fetch(url)
-        .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+        .then((res) => readJsonResponse(res))
         .then((fresh) => {
           clientCache.set(url, { data: fresh, timestamp: Date.now() });
           activeFetches.delete(url);
@@ -55,7 +74,7 @@ export async function fetchWithCache<T>(
 
   // First-time fetch
   const fetchPromise = fetch(url)
-    .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+    .then((res) => readJsonResponse(res))
     .then((data) => {
       clientCache.set(url, { data, timestamp: Date.now() });
       activeFetches.delete(url);

@@ -47,6 +47,16 @@ export function assertSameOrigin(req: Request): NextResponse | null {
   return null;
 }
 
+export function resolveDepartmentScope(
+  user: SessionUser
+): { deptId: number | null; cacheScope: string } | null {
+  if (user.role !== 'hod') {
+    return { deptId: null, cacheScope: 'global' };
+  }
+  if (!user.deptId) return null;
+  return { deptId: user.deptId, cacheScope: `dept:${user.deptId}` };
+}
+
 export function noStoreJson(data: unknown, init?: ResponseInit): NextResponse {
   const headers = new Headers(init?.headers);
   headers.set('Cache-Control', 'private, no-store');

@@ -56,6 +56,13 @@ export function canManageUsers(role: Role): boolean {
   return role === 'super_admin';
 }
 
+export const CATALOG_ROLES: readonly Role[] = ['super_admin', 'admin', 'procurement_officer', 'hod'];
+export const INWARD_ROLES: readonly Role[] = ['super_admin', 'admin', 'procurement_officer'];
+export const ISSUE_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod'];
+export const REPORT_ROLES: readonly Role[] = ['super_admin', 'admin', 'procurement_officer', 'hod'];
+export const USER_ADMIN_ROLES: readonly Role[] = ['super_admin'];
+export const DEPARTMENT_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod'];
+
 export interface SessionUser {
   userId: number;
   fullName: string;
