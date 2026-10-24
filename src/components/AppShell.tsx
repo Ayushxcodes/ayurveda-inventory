@@ -18,6 +18,7 @@ const AllItemsDashboard = dynamic(() => import('./AllItemsDashboard'), { ssr: fa
 const RegistryDashboard = dynamic(() => import('./RegistryDashboard'), { ssr: false });
 const AyurVaidyaGRN = dynamic(() => import('./AyurVaidyaGRN'), { ssr: false });
 const AyurVaidyaStockIssue = dynamic(() => import('./AyurVaidyaStockIssue'), { ssr: false });
+const UsersDashboard = dynamic(() => import('./UsersDashboard'), { ssr: false });
 
 const PAGE_TITLES: Record<AppTab, string> = {
   ALL: 'Dashboard',
@@ -199,6 +200,8 @@ export default function AppShell({ user }: { user: SessionUser }) {
             <OpexDashboard />
           ) : activeTab === 'CAPEX' ? (
             <CapexDashboard />
+          ) : activeTab === 'USERS' ? (
+            <UsersDashboard user={user} />
           ) : null}
         </div>
       </div>
