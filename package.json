@@ -7,9 +7,10 @@
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "seed": "node prisma/seed.js",
+    "bootstrap:superadmin": "node prisma/create-super-admin.js",
+    "seed": "node prisma/seed-departments.js",
+    "seed:departments": "node prisma/seed-departments.js",
     "seed:dashboard": "node prisma/seed-dashboard.js",
-    "seed:sql": "node prisma/seed-sql.js",
     "lint": "eslint"
   },
   "dependencies": {

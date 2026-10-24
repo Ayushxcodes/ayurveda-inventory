@@ -17,11 +17,14 @@ async function main() {
     const now = new Date()
 
     // department
-    let res = await client.query('SELECT dept_id FROM departments WHERE dept_code = $1', ['PHARM'])
+    let res = await client.query('SELECT dept_id FROM departments WHERE dept_code = $1', ['PHM'])
     let deptId
     if (res.rows.length) deptId = res.rows[0].dept_id
     else {
-      res = await client.query('INSERT INTO departments (dept_code, dept_name, updated_at) VALUES ($1,$2,$3) RETURNING dept_id', ['PHARM', 'Pharmacy', now])
+      res = await client.query(
+        "INSERT INTO departments (dept_code, dept_name, category, updated_at) VALUES ($1,$2,'pharmacy',$3) RETURNING dept_id",
+        ['PHM', 'Pharmacy', now]
+      )
       deptId = res.rows[0].dept_id
     }
 
@@ -34,17 +37,16 @@ async function main() {
       supplierId = res.rows[0].supplier_id
     }
 
-    // user
-    res = await client.query('SELECT user_id FROM users WHERE username = $1', ['seed_admin'])
-    let userId
-    if (res.rows.length) userId = res.rows[0].user_id
-    else {
-      res = await client.query(
-        'INSERT INTO users (employee_id, full_name, username, password_hash, role, dept_id, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING user_id',
-        ['EMP-SEED-1', 'Seed Admin', 'seed_admin', 'seed', 'admin', deptId, now]
+    // an active Super Admin must exist before seeding; create one with the bootstrap script
+    res = await client.query(
+      "SELECT user_id FROM users WHERE role = 'super_admin' AND is_active = true ORDER BY user_id LIMIT 1"
+    )
+    if (!res.rows.length) {
+      throw new Error(
+        'No active Super Admin found. Run npm run bootstrap:superadmin first, then re-run this seed.'
       )
-      userId = res.rows[0].user_id
     }
+    const userId = res.rows[0].user_id
 
     // items
     const itemsData = [

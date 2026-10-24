@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AyurVaidya Inventory ERP
 
-## Getting Started
+Inventory management for the All India Institute of Ayurveda (AIIA), Faridabad campus. Tracks CAPEX assets, OPEX consumables, goods receipt (GRN), stock issues, AMC contracts, alerts, and role-based access.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Next.js 16 (App Router, Turbopack, Proxy) with React 19
+- PostgreSQL with Prisma 7
+- Tailwind CSS 4
+- Password auth with Node `scrypt` and opaque database-backed sessions
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Roles
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Role | Code | Access |
+| --- | --- | --- |
+| Super Admin | `super_admin` | Everything, including user management |
+| Admin | `admin` | Operations: catalog, GRN, issues, reports — no user management |
+| Procurement Officer | `procurement_officer` | Catalog, GRN, QR codes, reports — no stock issue |
+| HOD | `hod` | Read-only catalog; dashboard, issue history, consumption and wastage limited to own department; authorises own department's issues; no GRN |
+| Requester | `requester` | Dashboard only (reserved for the future demand-request module) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Only Super Admins can create, edit, deactivate, or reset passwords for accounts from **User Management** in the sidebar. Every account management action is written to the audit log.
 
-## Learn More
+## Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+- Node.js 20+ (24 recommended)
+- PostgreSQL 15+
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Install dependencies:
 
-## Deploy on Vercel
+   ```bash
+   npm install
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. Create `.env` with your database connection:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```env
+   DATABASE_URL="postgresql://postgres:<password>@localhost:5432/ayurvaidya?schema=public"
+   ```
+
+3. Apply migrations:
+
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+4. Seed departments (12 clinical and support departments):
+
+   ```bash
+   npm run seed
+   ```
+
+5. Create the first Super Admin. Credentials come from one-shot environment variables and are never stored in the repo:
+
+   ```bash
+   BOOTSTRAP_SUPERADMIN_USERNAME=admin \
+   BOOTSTRAP_SUPERADMIN_PASSWORD='<strong-password>' \
+   BOOTSTRAP_SUPERADMIN_FULL_NAME='Super Admin' \
+   BOOTSTRAP_SUPERADMIN_EMPLOYEE_ID=SA-0001 \
+   npm run bootstrap:superadmin
+   ```
+
+   Optional: `BOOTSTRAP_SUPERADMIN_EMAIL`. The script is idempotent — re-running with an existing Super Admin username makes no changes. Password rules: 8–128 characters after NFKC normalization.
+
+6. Optional sample data (requires an active Super Admin from step 5):
+
+   ```bash
+   npm run seed:dashboard
+   ```
+
+7. Start the app:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000); unauthenticated requests are redirected to `/login`.
+
+## Scripts
+
+| Script | Purpose |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` | Prisma generate + production build |
+| `npm run start` | Production server |
+| `npm run lint` | ESLint |
+| `npm run bootstrap:superadmin` | Create the first Super Admin (idempotent) |
+| `npm run seed` / `npm run seed:departments` | Seed departments |
+| `npm run seed:dashboard` | Seed sample items, supplier, AMC, and alerts |
+
+## Auth notes
+
+- Sessions are random 32-byte tokens; only a SHA-256 hash is stored in `auth_sessions`.
+- Session cookie is `HttpOnly`, `SameSite=Lax`, `Secure` in production, with a 12-hour expiry.
+- Login is rate limited; failed attempts are audited.
+- Password resets and deactivation revoke all of the user's sessions.
+- The Proxy (`src/proxy.ts`) only performs optimistic redirects. Every API route and server page checks the session and role again before returning data.
+- All protected API responses are sent with `Cache-Control: private, no-store`, and mutations require a same-origin request.
+
+## First sign-in
+
+Sign in with the bootstrap account, then use the account menu (bottom of the sidebar) to change the password. Create additional accounts from **User Management**.

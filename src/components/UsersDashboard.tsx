@@ -93,13 +93,15 @@ export default function UsersDashboard({ user }: { user: SessionUser }) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    const next = search.trim();
+    if (next === query) return;
     const timer = setTimeout(() => {
       setLoading(true);
       setPage(1);
-      setQuery(search.trim());
+      setQuery(next);
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, query]);
 
   useEffect(() => {
     if (!notice) return;
