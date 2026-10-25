@@ -31,7 +31,8 @@ export default function Sidebar({
       activeTab !== "ISS" &&
       activeTab !== "CAPEX" &&
       activeTab !== "OPEX" &&
-      activeTab !== "USERS");
+      activeTab !== "USERS" &&
+      activeTab !== "DEMAND");
 
   const canOpenRegistry = canAccessTab(user.role, "REG");
   const canOpenCapex = canAccessTab(user.role, "CAPEX");
@@ -39,6 +40,7 @@ export default function Sidebar({
   const canOpenGrn = canAccessTab(user.role, "GRN");
   const canOpenIssue = canAccessTab(user.role, "ISS");
   const canOpenUsers = canAccessTab(user.role, "USERS");
+  const canOpenDemand = canAccessTab(user.role, "DEMAND");
   const showInsights = canOpenRegistry || canOpenCapex || canOpenOpex;
   const showCategories = canOpenCapex || canOpenOpex;
 
@@ -134,6 +136,28 @@ export default function Sidebar({
               </div>
               <span>Dashboard</span>
             </div>
+
+            {/* Demand Requests */}
+            {canOpenDemand && (
+              <div
+                className={`nav-item ${activeTab === "DEMAND" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("DEMAND");
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" />
+                    <path d="M9 3.5h6" strokeLinecap="round" />
+                    <path d="M9 9h6M9 13h6M9 17h4" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <span>Demand Requests</span>
+              </div>
+            )}
 
             {/* Item Registry */}
             {canOpenRegistry && (

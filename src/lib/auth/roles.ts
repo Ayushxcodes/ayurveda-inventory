@@ -17,14 +17,14 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  super_admin: 'Full access including user accounts and access control.',
-  admin: 'All inventory operations; no user management.',
-  procurement_officer: 'Catalog, stock inward, QR codes and reports; no stock issue.',
-  hod: 'Department-scoped view; can authorise stock issues for own department.',
-  requester: 'Dashboard counts only; can raise demand requests in a later module.',
+  super_admin: 'Full access including user accounts, access control and demand oversight.',
+  admin: 'All inventory operations and demand oversight; no user management.',
+  procurement_officer: 'Catalog, stock inward, QR codes, reports and demand fulfilment; no stock issue.',
+  hod: 'Department-scoped view; authorises stock issues and reviews demand requests for own department.',
+  requester: 'Dashboard counts plus demand requests; no inventory operations.',
 };
 
-export type AppTab = 'ALL' | 'CAPEX' | 'OPEX' | 'REG' | 'GRN' | 'ISS' | 'USERS';
+export type AppTab = 'ALL' | 'CAPEX' | 'OPEX' | 'REG' | 'GRN' | 'ISS' | 'USERS' | 'DEMAND';
 
 export const TAB_ACCESS: Record<AppTab, readonly Role[]> = {
   ALL: ROLES,
@@ -34,6 +34,7 @@ export const TAB_ACCESS: Record<AppTab, readonly Role[]> = {
   GRN: ['super_admin', 'admin', 'procurement_officer'],
   ISS: ['super_admin', 'admin', 'hod'],
   USERS: ['super_admin'],
+  DEMAND: ROLES,
 };
 
 export function canAccessTab(role: Role, tab: AppTab): boolean {
@@ -62,6 +63,23 @@ export const ISSUE_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod'];
 export const REPORT_ROLES: readonly Role[] = ['super_admin', 'admin', 'procurement_officer', 'hod'];
 export const USER_ADMIN_ROLES: readonly Role[] = ['super_admin'];
 export const DEPARTMENT_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod'];
+
+export const DEMAND_ROLES: readonly Role[] = ROLES;
+export const DEMAND_CREATE_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod', 'requester'];
+export const DEMAND_REVIEW_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod'];
+export const DEMAND_FULFIL_ROLES: readonly Role[] = ['super_admin', 'admin', 'procurement_officer'];
+
+export function canCreateDemand(role: Role): boolean {
+  return DEMAND_CREATE_ROLES.includes(role);
+}
+
+export function canReviewDemand(role: Role): boolean {
+  return DEMAND_REVIEW_ROLES.includes(role);
+}
+
+export function canFulfilDemand(role: Role): boolean {
+  return DEMAND_FULFIL_ROLES.includes(role);
+}
 
 export interface SessionUser {
   userId: number;
