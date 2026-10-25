@@ -11,6 +11,7 @@
     "seed": "node prisma/seed-departments.js",
     "seed:departments": "node prisma/seed-departments.js",
     "seed:dashboard": "node prisma/seed-dashboard.js",
+    "seed:roles": "node prisma/seed-role-users.js",
     "lint": "eslint"
   },
   "dependencies": {

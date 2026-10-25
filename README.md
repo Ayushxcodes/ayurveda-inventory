@@ -89,6 +89,7 @@ Only Super Admins can create, edit, deactivate, or reset passwords for accounts 
 | `npm run bootstrap:superadmin` | Create the first Super Admin (idempotent) |
 | `npm run seed` / `npm run seed:departments` | Seed departments |
 | `npm run seed:dashboard` | Seed sample items, supplier, AMC, and alerts |
+| `npm run seed:roles` | Seed test users for each system role |
 
 ## Auth notes
 
