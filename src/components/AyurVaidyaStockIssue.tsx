@@ -5,6 +5,7 @@ import ItemBadges from "./stock-issue/ItemBadges";
 import PreviewPanel from "./stock-issue/PreviewPanel";
 import ConfirmContent from "./stock-issue/ConfirmContent";
 import CameraQRScanner from "./qr/CameraQRScanner";
+import type { SessionUser } from "../lib/auth/roles";
 
 /* ── TYPES ───────────────────────────────────────────────── */
 interface Batch {
@@ -57,8 +58,15 @@ interface ServerItem {
 }
 
 interface Dept {
+  deptId: number;
   name: string;
   code: string;
+}
+
+interface Hod {
+  userId: number;
+  fullName: string;
+  deptId: number | null;
 }
 
 interface IssueRecord {
@@ -73,14 +81,9 @@ interface IssueRecord {
   purpose: string;
 }
 
-const DEPTS: Dept[] = [
-  { name: "OPD — General", code: "OPD-GEN" }, { name: "Pharmacy", code: "PHM" },
-  { name: "IPD Ward A", code: "IPD-A" },      { name: "IPD Ward B", code: "IPD-B" },
-  { name: "Panchakarma", code: "PKM" },        { name: "Shalakya (ENT & Eye)", code: "SHA" },
-  { name: "Kaumarabhritya", code: "KAU" },     { name: "Striroga (OB-GYN)", code: "STR" },
-  { name: "Shalya (Surgery)", code: "SHY" },   { name: "Laboratory", code: "LAB" },
-  { name: "Swastha Vritta", code: "SWA" },     { name: "Research", code: "RES" },
-];
+function todayIso(): string {
+  return new Date().toLocaleDateString('en-CA');
+}
 
 // Issue history will be fetched from the server when the history tab is opened
 
@@ -371,7 +374,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text)}
 `;
 
 /* ── COMPONENT ───────────────────────────────────────────── */
-export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: boolean }) {
+export default function AyurVaidyaStockIssue({
+  embedded = true,
+  user,
+}: {
+  embedded?: boolean;
+  user: SessionUser;
+}) {
   // Core state
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
@@ -379,17 +388,27 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   // Selected entities
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
-  const [selectedDept, setSelectedDept] = useState<Dept | null>(null);
+  const [selectedDept, setSelectedDept] = useState<Dept | null>(
+    user.role === 'hod' && user.deptId && user.deptCode && user.deptName
+      ? { deptId: user.deptId, name: user.deptName, code: user.deptCode }
+      : null
+  );
+
+  // Departments and HODs loaded from the server
+  const [depts, setDepts] = useState<Dept[]>([]);
+  const [hods, setHods] = useState<Hod[]>([]);
 
   // Form fields
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [issueQty, setIssueQty] = useState("");
-  const [authorisedBy, setAuthorisedBy] = useState("");
+  const [authorisedById, setAuthorisedById] = useState<number | ''>(
+    user.role === 'hod' ? user.userId : ''
+  );
   const [purpose, setPurpose] = useState("");
   const [patientId, setPatientId] = useState("");
   const [specificLocation, setSpecificLocation] = useState("");
-  const [issueDate, setIssueDate] = useState("2025-04-21");
+  const [issueDate, setIssueDate] = useState(todayIso);
   const [notes, setNotes] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [remoteResults, setRemoteResults] = useState<Item[]>([]);
@@ -405,7 +424,18 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   const newTotal = (selectedItem?.totalStock ?? 0) - qtyInt;
   const batchLeft = avail - qtyInt;
 
-  const step3Valid = !!(selectedDept && authorisedBy.trim() && purpose);
+  const availableHods = selectedDept
+    ? hods.filter((h) => h.deptId === selectedDept.deptId)
+    : [];
+  const authorisedByName = (() => {
+    if (!authorisedById) return "";
+    const match = hods.find((h) => h.userId === authorisedById);
+    if (match) return match.fullName;
+    if (user.role === "hod" && authorisedById === user.userId) return user.fullName;
+    return "";
+  })();
+
+  const step3Valid = !!(selectedDept && authorisedById && purpose.trim());
 
   // Qty validation state
   const qtyState: "ok" | "warn" | "error" | "" = (() => {
@@ -434,6 +464,29 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Load departments and their active HODs
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/departments')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!mounted || !data || !Array.isArray(data.departments)) return;
+        const mapped: Dept[] = data.departments.map(
+          (d: { deptId: number; deptCode: string; deptName: string }) => ({
+            deptId: d.deptId,
+            code: d.deptCode,
+            name: d.deptName,
+          })
+        );
+        setDepts(mapped);
+        setHods(Array.isArray(data.hods) ? (data.hods as Hod[]) : []);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   /* ── ACTIONS ────────────────────────────────────────────── */
@@ -482,7 +535,10 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   function clearItem() {
     setSelectedItem(null);
     setSelectedBatch(null);
-    setSelectedDept(null);
+    if (user.role !== 'hod') {
+      setSelectedDept(null);
+      setAuthorisedById('');
+    }
     setSearchQuery("");
     setShowSearchResults(false);
   }
@@ -496,8 +552,11 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
     setIssueQty("");
   }
 
-  function selectDeptByIdx(idx: number) {
-    setSelectedDept(DEPTS[idx] ?? null);
+  function selectDept(dept: Dept) {
+    setSelectedDept(dept);
+    const deptHods = hods.filter((h) => h.deptId === dept.deptId);
+    if (deptHods.some((h) => h.userId === authorisedById)) return;
+    setAuthorisedById(deptHods.length === 1 ? deptHods[0].userId : '');
   }
 
   function saveIssue() {
@@ -507,9 +566,8 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
       itemCode: selectedItem.id,
       batchNo: selectedBatch.batchNo,
       qty: Number(issueQty || 0),
-      deptCode: selectedDept?.code || null,
-      authorisedBy: authorisedBy || null,
-      issuedBy: '',
+      deptId: selectedDept?.deptId ?? null,
+      authorisedByUserId: authorisedById || null,
       purpose: purpose || null,
       specificLocation: specificLocation || null,
       notes: notes || null,
@@ -536,19 +594,28 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
   function resetAll() {
     setSelectedItem(null);
     setSelectedBatch(null);
-    setSelectedDept(null);
     setSearchQuery("");
     setShowSearchResults(false);
     setIssueQty("");
-    setAuthorisedBy("");
     setPurpose("");
     setPatientId("");
     setSpecificLocation("");
-    setIssueDate("2025-04-21");
+    setIssueDate(todayIso());
     setNotes("");
     setSuccessMsg("");
     setCurrentStep(1);
     setActiveTab("new");
+    if (user.role === 'hod') {
+      setSelectedDept(
+        user.deptId && user.deptCode && user.deptName
+          ? { deptId: user.deptId, name: user.deptName, code: user.deptCode }
+          : null
+      );
+      setAuthorisedById(user.userId);
+    } else {
+      setSelectedDept(null);
+      setAuthorisedById('');
+    }
   }
 
   /* ── SEARCH RESULTS ─────────────────────────────────────── */
@@ -915,21 +982,44 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                           <div className="fc-title"><div className="fc-step-dot">3</div>Where is this being issued to?</div>
                         </div>
                         <div className="fc-body">
-                          <div style={{ fontSize: 11.5, fontWeight: 500, color: "var(--text-mid)", marginBottom: 10 }}>
-                            Select department / ward <span className="req">*</span>
-                          </div>
-                          <div className="dept-grid">
-                            {DEPTS.map((d, i) => (
-                              <div
-                                key={d.code}
-                                className={`dept-option${selectedDept?.code === d.code ? " selected" : ""}`}
-                                onClick={() => selectDeptByIdx(i)}
-                              >
-                                <div className="dept-option-name">{d.name}</div>
-                                <div className="dept-option-code">{d.code}</div>
+                          {user.role === "hod" ? (
+                            <div className="field">
+                              <label>Department / ward</label>
+                              <input
+                                type="text"
+                                readOnly
+                                value={selectedDept ? `${selectedDept.name} (${selectedDept.code})` : "No department assigned"}
+                                style={{ background: "var(--bg)", color: "var(--text-dim)" }}
+                              />
+                              <div className="field-hint">
+                                {selectedDept
+                                  ? "Issues are restricted to your department."
+                                  : "Ask a Super Admin to assign you to a department before issuing stock."}
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 11.5, fontWeight: 500, color: "var(--text-mid)", marginBottom: 10 }}>
+                                Select department / ward <span className="req">*</span>
+                              </div>
+                              {depts.length === 0 ? (
+                                <div className="field-hint">Loading departments…</div>
+                              ) : (
+                                <div className="dept-grid">
+                                  {depts.map((d) => (
+                                    <div
+                                      key={d.code}
+                                      className={`dept-option${selectedDept?.deptId === d.deptId ? " selected" : ""}`}
+                                      onClick={() => selectDept(d)}
+                                    >
+                                      <div className="dept-option-name">{d.name}</div>
+                                      <div className="dept-option-code">{d.code}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
                           <div className="field" style={{ marginTop: 12 }}>
                             <label>Specific location (optional)</label>
                             <input type="text" value={specificLocation} onChange={(e) => setSpecificLocation(e.target.value)} placeholder="e.g. OPD Room 3, Ward B Nurses Station…" />
@@ -945,8 +1035,36 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                         <div className="fc-body">
                           <div className="field-grid g2" style={{ marginBottom: 14 }}>
                             <div className="field">
-                              <label>Authorised by (doctor / HOD) <span className="req">*</span></label>
-                              <input type="text" value={authorisedBy} onChange={(e) => setAuthorisedBy(e.target.value)} placeholder="Dr. S. Verma" />
+                              <label>Authorised by (HOD) <span className="req">*</span></label>
+                              {user.role === "hod" ? (
+                                <>
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={user.fullName}
+                                    style={{ background: "var(--bg)", color: "var(--text-dim)" }}
+                                  />
+                                  <div className="field-hint">As HOD you authorise issues for your department.</div>
+                                </>
+                              ) : (
+                                <>
+                                  <select
+                                    value={authorisedById}
+                                    onChange={(e) => setAuthorisedById(e.target.value ? Number(e.target.value) : "")}
+                                    disabled={!selectedDept}
+                                  >
+                                    <option value="">Select HOD…</option>
+                                    {availableHods.map((h) => (
+                                      <option key={h.userId} value={h.userId}>{h.fullName}</option>
+                                    ))}
+                                  </select>
+                                  {selectedDept && availableHods.length === 0 && (
+                                    <div className="field-hint" style={{ color: "var(--red)" }}>
+                                      No active HOD is assigned to this department. Ask a Super Admin to assign one.
+                                    </div>
+                                  )}
+                                </>
+                              )}
                             </div>
                             <div className="field">
                               <label>Purpose <span className="req">*</span></label>
@@ -1001,7 +1119,7 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                             qty={qtyInt}
                             batch={selectedBatch?.batchNo ?? "—"}
                             dept={selectedDept?.name ?? "—"}
-                            auth={authorisedBy || "—"}
+                            auth={authorisedByName || "—"}
                             pur={purpose || "—"}
                             loc={specificLocation || "—"}
                             patId={patientId || "—"}
@@ -1046,7 +1164,7 @@ export default function AyurVaidyaStockIssue({ embedded = true }: { embedded?: b
                   selectedBatch={selectedBatch}
                   qtyInt={qtyInt}
                   selectedDept={selectedDept?.name ?? null}
-                  authorisedBy={authorisedBy}
+                  authorisedBy={authorisedByName}
                   purpose={purpose}
                 />
               </div>

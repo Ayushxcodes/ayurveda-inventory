@@ -1,5 +1,7 @@
 import prisma from '@/lib/prisma'
 import { getOrSetCache, invalidateCache } from '@/lib/cache'
+import { apiGuard, assertSameOrigin, noStoreJson, resolveDepartmentScope } from '@/lib/auth/guards'
+import { ISSUE_ROLES } from '@/lib/auth/roles'
 import { IssuePurpose } from '@/generated/prisma/client'
 import { NextResponse } from 'next/server'
 
@@ -9,29 +11,104 @@ type IssueSeqResult = {
   issue_id: number | bigint
 }
 
+class IssueHttpError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 export async function POST(req: Request) {
+  const auth = await apiGuard(ISSUE_ROLES)
+  if (auth.response) return auth.response
+
+  const originError = assertSameOrigin(req)
+  if (originError) return originError
+
   try {
     const body = await req.json()
-    const { itemCode, batchNo, qty, deptCode, authorisedBy, issuedBy, purpose, specificLocation, notes } = body
+    const {
+      itemCode,
+      batchNo,
+      qty,
+      deptId: requestedDeptId,
+      authorisedByUserId,
+      purpose,
+      specificLocation,
+      notes,
+    } = body
     const quantity = Number(qty || 0)
-    if (!itemCode || !quantity || quantity <= 0) {
+    if (!itemCode || !Number.isFinite(quantity) || quantity <= 0) {
       return NextResponse.json({ error: 'invalid payload' }, { status: 400 })
     }
 
     const it = await prisma.item.findFirst({ where: { itemCode } })
     if (!it) return NextResponse.json({ error: 'item not found' }, { status: 404 })
 
+    let targetDeptId: number
+    if (auth.user.role === 'hod') {
+      if (!auth.user.deptId) {
+        return NextResponse.json({ error: 'No department assigned to this HOD account' }, { status: 403 })
+      }
+      targetDeptId = auth.user.deptId
+    } else {
+      const parsedDeptId = Number(requestedDeptId)
+      if (!Number.isInteger(parsedDeptId) || parsedDeptId <= 0) {
+        return NextResponse.json({ error: 'deptId is required' }, { status: 400 })
+      }
+      targetDeptId = parsedDeptId
+    }
+
+    const dept = await prisma.department.findFirst({
+      where: { deptId: targetDeptId, isActive: true },
+      select: { deptId: true },
+    })
+    if (!dept) {
+      return NextResponse.json({ error: 'department not found or inactive' }, { status: 400 })
+    }
+
+    let authoriserId: number
+    if (auth.user.role === 'hod') {
+      authoriserId = auth.user.userId
+    } else {
+      const parsedAuthoriserId = Number(authorisedByUserId)
+      if (!Number.isInteger(parsedAuthoriserId) || parsedAuthoriserId <= 0) {
+        return NextResponse.json({ error: 'authorisedByUserId is required' }, { status: 400 })
+      }
+      const authoriser = await prisma.user.findFirst({
+        where: {
+          userId: parsedAuthoriserId,
+          role: 'hod',
+          isActive: true,
+          deptId: targetDeptId,
+        },
+        select: { userId: true },
+      })
+      if (!authoriser) {
+        return NextResponse.json(
+          { error: 'Authoriser must be an active HOD of the target department' },
+          { status: 400 }
+        )
+      }
+      authoriserId = authoriser.userId
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       let batch = null
       if (batchNo) {
         batch = await tx.itemBatch.findFirst({ where: { itemId: it.itemId, batchNumber: batchNo } })
+        if (!batch) throw new IssueHttpError('batch not found for this item', 400)
+        if (Number(batch.quantityAvailable || 0) < quantity) {
+          throw new IssueHttpError('insufficient quantity in selected batch', 409)
+        }
       } else {
         batch = await tx.itemBatch.findFirst({
           where: { itemId: it.itemId, quantityAvailable: { gte: quantity } },
           orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
         })
+        if (!batch) throw new IssueHttpError('no batch has enough stock for this quantity', 409)
       }
-      if (!batch) throw new Error('suitable batch not found or insufficient quantity')
 
       const stockAgg = await tx.itemBatch.aggregate({
         where: { itemId: it.itemId },
@@ -39,24 +116,6 @@ export async function POST(req: Request) {
       })
       const stockBefore = Number(stockAgg._sum.quantityAvailable || 0)
       const stockAfter = stockBefore - quantity
-
-      let deptId: number | null = null
-      if (deptCode) {
-        const d = await tx.department.findFirst({ where: { OR: [{ deptCode }, { deptName: deptCode }] } })
-        if (d) deptId = d.deptId
-      }
-      if (!deptId) deptId = it.primaryDeptId
-
-      let authId = null
-      if (authorisedBy) {
-        const u = await tx.user.findFirst({ where: { fullName: authorisedBy } })
-        authId = u ? u.userId : (await tx.user.findFirst())?.userId ?? 1
-      }
-      let issuedId = null
-      if (issuedBy) {
-        const u = await tx.user.findFirst({ where: { fullName: issuedBy } })
-        issuedId = u ? u.userId : (await tx.user.findFirst())?.userId ?? 1
-      }
 
       const batchQtyBefore = Number(batch.quantityAvailable || 0)
       const batchQtyAfter = batchQtyBefore - quantity
@@ -86,12 +145,12 @@ export async function POST(req: Request) {
           issueNumber,
           itemId: it.itemId,
           batchId: batch.batchId,
-          deptId: deptId as number,
+          deptId: targetDeptId,
           quantityIssued: quantity,
           unit: it.unit || '',
           specificLocation: specificLocation ?? '',
-          authorisedBy: authId ?? 1,
-          issuedBy: issuedId ?? 1,
+          authorisedBy: authoriserId,
+          issuedBy: auth.user.userId,
           purpose: purposeEnum,
           stockBefore,
           stockAfter,
@@ -109,14 +168,18 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, issue: result.created, batch: result.updatedBatch })
   } catch (err: unknown) {
+    if (err instanceof IssueHttpError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
     const message = err instanceof Error ? err.message : String(err)
     console.error('POST /api/issue error:', err)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
-async function fetchStockIssues() {
+async function fetchStockIssues(deptId: number | null) {
   const rows = await prisma.stockIssue.findMany({
+    where: deptId ? { deptId } : undefined,
     orderBy: { issueDate: 'desc' },
     take: 200,
     include: {
@@ -145,19 +208,23 @@ async function fetchStockIssues() {
 }
 
 export async function GET() {
+  const auth = await apiGuard(ISSUE_ROLES)
+  if (auth.response) return auth.response
+
+  const scope = resolveDepartmentScope(auth.user)
+  if (!scope) {
+    return noStoreJson({ error: 'No department assigned to this HOD account' }, { status: 403 })
+  }
+
   try {
     const mapped = await getOrSetCache(
-      'api:issue:list',
-      () => fetchStockIssues(),
+      `api:issue:list:${scope.cacheScope}`,
+      () => fetchStockIssues(scope.deptId),
       15,
       ['issue']
     )
 
-    return NextResponse.json(mapped, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=59',
-      },
-    })
+    return noStoreJson(mapped)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('GET /api/issue error:', err)

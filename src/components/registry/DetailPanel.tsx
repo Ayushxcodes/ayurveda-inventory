@@ -4,7 +4,17 @@ import React from "react";
 import { Item, stockPct, expiryLabel, stockBarColor } from "./utils";
 import StatusPill from "./StatusPill";
 
-export default function DetailPanel({ item, onClose }: { item: Item | null | "new"; onClose: () => void }) {
+export default function DetailPanel({
+  item,
+  onClose,
+  canIssue,
+  canReceive,
+}: {
+  item: Item | null | "new";
+  onClose: () => void;
+  canIssue: boolean;
+  canReceive: boolean;
+}) {
   const isOpen = item !== null;
 
   const renderBody = () => {
@@ -72,8 +82,12 @@ export default function DetailPanel({ item, onClose }: { item: Item | null | "ne
                         <div style={{ color: 'var(--text-dim)' }}>{b.supplier || '—'}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <div className="dp-btn" onClick={() => { try { sessionStorage.setItem('openItemForISS', String(item.id)); sessionStorage.setItem('openItemForISSBatch', String(b.batch)); window.dispatchEvent(new CustomEvent('open-issue', { detail: item.id })); } catch {} }}>Issue</div>
-                        <div className="dp-btn" onClick={() => { alert('Receive GRN into batch: ' + b.batch); }}>GRN</div>
+                        {canIssue && (
+                          <div className="dp-btn" onClick={() => { try { sessionStorage.setItem('openItemForISS', String(item.id)); sessionStorage.setItem('openItemForISSBatch', String(b.batch)); window.dispatchEvent(new CustomEvent('open-issue', { detail: item.id })); } catch {} }}>Issue</div>
+                        )}
+                        {canReceive && (
+                          <div className="dp-btn" onClick={() => { alert('Receive GRN into batch: ' + b.batch); }}>GRN</div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -113,34 +127,38 @@ export default function DetailPanel({ item, onClose }: { item: Item | null | "ne
         <div className="dp-body">{renderBody()}</div>
         <div className="dp-actions">
           <div className="dp-btn" onClick={onClose}>Close</div>
-          <div
-            className="dp-btn"
-            onClick={() => {
-              try {
-                const id = item !== "new" && item ? item.id : null;
-                if (id) {
-                  sessionStorage.setItem('openItemForISS', String(id));
-                  sessionStorage.removeItem('openItemForISSBatch');
-                }
-                window.dispatchEvent(new CustomEvent('open-issue', { detail: id }));
-              } catch {}
-              onClose();
-            }}
-          >
-            Issue stock
-          </div>
-          <div
-            className="dp-btn primary"
-            onClick={() => {
-              try {
-                const id = item !== "new" && item ? item.id : null;
-                window.dispatchEvent(new CustomEvent('open-grn', { detail: id }));
-              } catch {}
-              onClose();
-            }}
-          >
-            Record GRN
-          </div>
+          {canIssue && (
+            <div
+              className="dp-btn"
+              onClick={() => {
+                try {
+                  const id = item !== "new" && item ? item.id : null;
+                  if (id) {
+                    sessionStorage.setItem('openItemForISS', String(id));
+                    sessionStorage.removeItem('openItemForISSBatch');
+                  }
+                  window.dispatchEvent(new CustomEvent('open-issue', { detail: id }));
+                } catch {}
+                onClose();
+              }}
+            >
+              Issue stock
+            </div>
+          )}
+          {canReceive && (
+            <div
+              className="dp-btn primary"
+              onClick={() => {
+                try {
+                  const id = item !== "new" && item ? item.id : null;
+                  window.dispatchEvent(new CustomEvent('open-grn', { detail: id }));
+                } catch {}
+                onClose();
+              }}
+            >
+              Record GRN
+            </div>
+          )}
         </div>
       </div>
     </div>

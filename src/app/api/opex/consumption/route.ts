@@ -1,15 +1,27 @@
 import prisma from '@/lib/prisma'
 import { getOrSetCache } from '@/lib/cache'
+import { apiGuard, noStoreJson, resolveDepartmentScope } from '@/lib/auth/guards'
+import { REPORT_ROLES } from '@/lib/auth/roles'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-async function fetchConsumptionData() {
-  const sql = `
+type ConsumptionRawRow = {
+  item_id: number
+  item_name: string
+  unit?: string | null
+  data?: (number | string)[] | null
+}
+
+async function fetchConsumptionData(deptId: number | null) {
+  const raw = await prisma.$queryRaw<ConsumptionRawRow[]>`
     WITH top_items AS (
       SELECT i.item_id, i.item_name, i.unit
       FROM items i
-      LEFT JOIN stock_issues si ON si.item_id = i.item_id AND si.issue_date >= date_trunc('month', current_date) - interval '5 months'
+      LEFT JOIN stock_issues si
+        ON si.item_id = i.item_id
+       AND si.issue_date >= date_trunc('month', current_date) - interval '5 months'
+       AND (${deptId}::int IS NULL OR si.dept_id = ${deptId}::int)
       WHERE i.category = 'OPEX'
       GROUP BY i.item_id, i.item_name, i.unit
       ORDER BY COALESCE(SUM(si.quantity_issued), 0) DESC NULLS LAST
@@ -28,6 +40,7 @@ async function fetchConsumptionData() {
       FROM stock_issues si
       WHERE si.item_id IN (SELECT item_id FROM top_items)
         AND si.issue_date >= date_trunc('month', current_date) - interval '5 months'
+        AND (${deptId}::int IS NULL OR si.dept_id = ${deptId}::int)
       GROUP BY si.item_id, date_trunc('month', si.issue_date)
     )
     SELECT
@@ -43,15 +56,6 @@ async function fetchConsumptionData() {
     FROM top_items ti;
   `
 
-type ConsumptionRawRow = {
-  item_id: number
-  item_name: string
-  unit?: string | null
-  data?: (number | string)[] | null
-}
-
-  const raw = await prisma.$queryRawUnsafe<ConsumptionRawRow[]>(sql)
-
   const palette = ['#185FA5', '#1A6B3C', '#92400E', '#78600A', '#3d5a6c', '#B91C1C']
   return raw.map((r, idx) => ({
     id: r.item_id,
@@ -64,19 +68,23 @@ type ConsumptionRawRow = {
 }
 
 export async function GET() {
+  const auth = await apiGuard(REPORT_ROLES)
+  if (auth.response) return auth.response
+
+  const scope = resolveDepartmentScope(auth.user)
+  if (!scope) {
+    return noStoreJson({ error: 'No department assigned to this HOD account' }, { status: 403 })
+  }
+
   try {
     const items = await getOrSetCache(
-      'api:opex:consumption',
-      () => fetchConsumptionData(),
+      `api:opex:consumption:${scope.cacheScope}`,
+      () => fetchConsumptionData(scope.deptId),
       30,
       ['opex', 'consumption']
     )
 
-    return NextResponse.json(items, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59',
-      },
-    })
+    return noStoreJson(items)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('GET /api/opex/consumption error:', err)

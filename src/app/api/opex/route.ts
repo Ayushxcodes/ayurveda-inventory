@@ -1,5 +1,7 @@
 import { prisma, withDbRetry } from '@/lib/prisma'
 import { getOrSetCache } from '@/lib/cache'
+import { apiGuard, noStoreJson } from '@/lib/auth/guards'
+import { CATALOG_ROLES } from '@/lib/auth/roles'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -94,6 +96,9 @@ async function fetchOpexData() {
 }
 
 export async function GET() {
+  const auth = await apiGuard(CATALOG_ROLES)
+  if (auth.response) return auth.response
+
   try {
     const items = await getOrSetCache(
       'api:opex',
@@ -102,11 +107,7 @@ export async function GET() {
       ['opex', 'items']
     )
 
-    return NextResponse.json(items, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59',
-      },
-    })
+    return noStoreJson(items)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('GET /api/opex error:', err)

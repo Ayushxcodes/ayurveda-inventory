@@ -1,0 +1,374 @@
+.account-menu {
+  position: relative;
+  width: 100%;
+}
+
+.account-menu .account-trigger {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.account-menu .account-trigger:focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.65);
+  outline-offset: 2px;
+}
+
+.account-caret {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.45);
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+
+.account-caret.open {
+  color: rgba(255, 255, 255, 0.75);
+  transform: rotate(180deg);
+}
+
+/* ── Popover ───────────────────────────────────────────────── */
+.account-popover {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0b2719;
+  box-shadow:
+    0 20px 45px -14px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.25);
+  animation: account-pop 0.14s ease-out;
+}
+
+@keyframes account-pop {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.account-popover-head {
+  padding: 9px 10px 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  margin-bottom: 6px;
+}
+
+.account-popover-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #f0faf3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-popover-meta {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: rgba(214, 234, 221, 0.55);
+}
+
+.account-popover-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.account-role-tag,
+.account-dept-tag {
+  display: inline-flex;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.account-role-tag {
+  color: #86efac;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.18);
+}
+
+.account-dept-tag {
+  color: rgba(226, 240, 231, 0.78);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.account-action {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(236, 247, 239, 0.82);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.account-action svg {
+  flex-shrink: 0;
+  color: rgba(214, 234, 221, 0.55);
+}
+
+.account-action:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.account-action.danger {
+  color: #fca5a5;
+}
+
+.account-action.danger svg {
+  color: #f87171;
+}
+
+.account-action.danger:hover {
+  background: rgba(248, 113, 113, 0.1);
+  color: #fecaca;
+}
+
+.account-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.account-logout-form {
+  margin: 0;
+}
+
+/* ── Modal ─────────────────────────────────────────────────── */
+.account-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 20, 11, 0.56);
+  backdrop-filter: blur(3px);
+  animation: account-fade 0.16s ease-out;
+}
+
+@keyframes account-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.account-modal {
+  width: min(432px, 100%);
+  padding: 26px 26px 22px;
+  border-radius: 16px;
+  border: 1px solid #dce8de;
+  background: #ffffff;
+  box-shadow: 0 30px 70px -20px rgba(4, 20, 11, 0.5);
+  font-family: var(--sans, 'Inter', sans-serif);
+  animation: account-modal-in 0.18s ease-out;
+}
+
+@keyframes account-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.account-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.account-modal-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #1a6b3c;
+}
+
+.account-modal-head h3 {
+  margin: 6px 0 0;
+  font-family: var(--serif, 'Playfair Display', Georgia, serif);
+  font-size: 23px;
+  font-weight: 600;
+  color: #0f2c1b;
+}
+
+.account-modal-close {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #5f836c;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.account-modal-close:hover {
+  background: #f1f6f2;
+  color: #244b31;
+}
+
+.account-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.account-field label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #244b31;
+}
+
+.account-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid #cfe0d2;
+  background: #fbfdfb;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: #0d1f12;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.account-field input:focus {
+  background: #ffffff;
+  border-color: #1a6b3c;
+  box-shadow: 0 0 0 3px rgba(26, 107, 60, 0.12);
+}
+
+.account-field-hint {
+  font-size: 10.5px;
+  color: #7a9584;
+}
+
+.account-form-error {
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.account-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.account-btn {
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.14s ease, background 0.14s ease;
+}
+
+.account-btn:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.account-btn.primary {
+  border: 0;
+  background: linear-gradient(180deg, #1d7a44 0%, #155c33 100%);
+  color: #f4fbf6;
+  box-shadow: 0 8px 16px -10px rgba(21, 92, 51, 0.6);
+}
+
+.account-btn.primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.account-btn.ghost {
+  border: 1px solid #dce8de;
+  background: #ffffff;
+  color: #41674e;
+}
+
+.account-btn.ghost:hover:not(:disabled) {
+  background: #f4f8f5;
+}
+
+.account-password-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px 2px;
+  text-align: center;
+}
+
+.account-success-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  color: #15803d;
+  background: #eaf7ef;
+  border: 1px solid #bbf7d0;
+}
+
+.account-password-success p {
+  margin: 0;
+  max-width: 320px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #41674e;
+}
+
+.account-password-success .account-btn {
+  margin-top: 4px;
+}

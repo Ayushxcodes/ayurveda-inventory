@@ -1,5 +1,7 @@
 import prisma from '@/lib/prisma'
 import { getOrSetCache, invalidateCache } from '@/lib/cache'
+import { apiGuard, assertSameOrigin, noStoreJson } from '@/lib/auth/guards'
+import { INWARD_ROLES } from '@/lib/auth/roles'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -62,6 +64,9 @@ async function fetchGrnList() {
 }
 
 export async function GET() {
+  const auth = await apiGuard(INWARD_ROLES)
+  if (auth.response) return auth.response
+
   try {
     const rows = await getOrSetCache(
       'api:grn:list',
@@ -70,11 +75,7 @@ export async function GET() {
       ['grn']
     )
 
-    return NextResponse.json(rows, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=59',
-      },
-    })
+    return noStoreJson(rows)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('GET /api/grn error:', err)
@@ -83,6 +84,12 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await apiGuard(INWARD_ROLES)
+  if (auth.response) return auth.response
+
+  const originError = assertSameOrigin(req)
+  if (originError) return originError
+
   try {
     const body = await req.json()
     const {
@@ -97,7 +104,6 @@ export async function POST(req: Request) {
       invoiceDate,
       pricePerUnit,
       storeLocation,
-      receivedBy,
       notes,
     } = body
 
@@ -132,16 +138,7 @@ export async function POST(req: Request) {
             }
           }
 
-          let recvId = 1
-          if (receivedBy) {
-            const u = await tx.user.findFirst({ where: { fullName: receivedBy } })
-            if (u) recvId = u.userId
-            else {
-              const anyUser = await tx.user.findFirst()
-              if (anyUser) recvId = anyUser.userId
-            }
-          }
-
+          const recvId = auth.user.userId
           const stockBefore = stockBeforeOuter
           const receiveQty = Number(qty) || 0
 
