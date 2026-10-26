@@ -9,7 +9,14 @@ import {
 } from '@/lib/auth/roles';
 import './demand/demand.css';
 
-type DemandStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled' | 'cancelled';
+type DemandStatus =
+  | 'pending'
+  | 'pending_hod'
+  | 'pending_admin'
+  | 'approved'
+  | 'rejected'
+  | 'fulfilled'
+  | 'cancelled';
 
 interface DemandItem {
   demandItemId: number;
@@ -37,6 +44,15 @@ interface DemandRow {
   requester: { userId: number; fullName: string; username: string };
   reviewerName: string | null;
   fulfillerName: string | null;
+  hasActiveAnomaly?: boolean;
+  anomaly?: {
+    alertId: number;
+    title: string;
+    message: string;
+    severity: string;
+    triggeredAt: string;
+    relatedRequestId?: number | null;
+  } | null;
   items: DemandItem[];
 }
 
@@ -61,15 +77,77 @@ interface DemandOptions {
   canChooseDepartment: boolean;
 }
 
+interface ClientDemandAnomaly {
+  type: 'unconsumed_stock' | 'open_demand';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  lineIndex: number;
+  matchType: 'same_item' | 'similar_name';
+  score: number;
+  newItem: {
+    itemId: number;
+    itemCode: string;
+    itemName: string;
+    requestedQty: number;
+    unit: string;
+  };
+  priorItem: {
+    itemId: number;
+    itemCode: string;
+    itemName: string;
+    quantity: number;
+    unit: string;
+  };
+  priorRequest: {
+    requestId: number;
+    requestNumber: string;
+    status: DemandStatus;
+    createdAt: string;
+    fulfilledAt: string | null;
+    requesterName: string;
+    fulfilledQty?: number;
+    consumedQty?: number;
+    unconsumedQty?: number;
+    unit: string;
+  };
+  title: string;
+  message: string;
+}
+
+interface DemandAnomaly {
+  alertId: number;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  message: string;
+  triggeredAt: string;
+  department: { deptId: number; deptCode: string; deptName: string } | null;
+  item: { itemId: number; itemCode: string; itemName: string } | null;
+  request: DemandRow | null;
+  relatedRequest: {
+    requestId: number;
+    requestNumber: string;
+    status: DemandStatus;
+    createdAt: string;
+    requesterName: string;
+  } | null;
+}
+
 const STATUS_LABELS: Record<DemandStatus, string> = {
   pending: 'Pending',
+  pending_hod: 'Pending HOD',
+  pending_admin: 'Pending Admin',
   approved: 'Approved',
   rejected: 'Rejected',
   fulfilled: 'Fulfilled',
   cancelled: 'Cancelled',
 };
 
-const STATUS_ORDER: DemandStatus[] = ['pending', 'approved', 'fulfilled', 'rejected', 'cancelled'];
+const STATUS_ORDER: DemandStatus[] = [
+  'pending',
+  'approved',
+  'fulfilled',
+  'rejected',
+  'cancelled',
+];
 
 const SUBTITLES: Record<SessionUser['role'], string> = {
   super_admin: 'Demand requests across every department, with full review and fulfilment control.',
@@ -91,8 +169,14 @@ async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const error = new Error(
       (payload as { error?: string }).error || 'Request failed'
-    ) as Error & { fields?: Record<string, string> };
+    ) as Error & {
+      fields?: Record<string, string>;
+      code?: string;
+      anomalies?: ClientDemandAnomaly[];
+    };
     error.fields = (payload as { fields?: Record<string, string> }).fields;
+    error.code = (payload as { code?: string }).code;
+    error.anomalies = (payload as { anomalies?: ClientDemandAnomaly[] }).anomalies;
     throw error;
   }
   return payload as T;
@@ -140,8 +224,12 @@ export default function DemandRequests({ user }: { user: SessionUser }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<DemandRow | null>(null);
+  const [anomalies, setAnomalies] = useState<DemandAnomaly[]>([]);
+  const [anomalyError, setAnomalyError] = useState('');
+  const [acknowledgingId, setAcknowledgingId] = useState<number | null>(null);
 
   const canCreate = canCreateDemand(user.role);
+  const canReview = canReviewDemand(user.role);
 
   useEffect(() => {
     const next = search.trim();
@@ -184,12 +272,51 @@ export default function DemandRequests({ user }: { user: SessionUser }) {
     };
   }, [query, statusFilter, refreshKey]);
 
+  useEffect(() => {
+    if (!canReview) return;
+
+    let mounted = true;
+    apiRequest<{ anomalies: DemandAnomaly[] }>('/api/demands/anomalies')
+      .then((data) => {
+        if (!mounted) return;
+        setAnomalies(data.anomalies);
+        setAnomalyError('');
+      })
+      .catch((err: unknown) => {
+        if (!mounted) return;
+        setAnomalyError(err instanceof Error ? err.message : 'Failed to load anomalies');
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [canReview, refreshKey]);
+
   const reload = (message: string) => {
     setShowCreate(false);
     setSelected(null);
     setNotice(message);
     setLoading(true);
     setRefreshKey((key) => key + 1);
+  };
+
+  const acknowledgeAnomaly = async (alertId: number) => {
+    setAcknowledgingId(alertId);
+    setAnomalyError('');
+    try {
+      await apiRequest(`/api/demands/anomalies/${alertId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'acknowledge' }),
+      });
+      setAnomalies((prev) => prev.filter((item) => item.alertId !== alertId));
+      setRefreshKey((key) => key + 1);
+      setNotice('Anomaly acknowledged');
+    } catch (err: unknown) {
+      setAnomalyError(err instanceof Error ? err.message : 'Failed to acknowledge anomaly');
+    } finally {
+      setAcknowledgingId(null);
+    }
   };
 
   return (
@@ -207,6 +334,69 @@ export default function DemandRequests({ user }: { user: SessionUser }) {
       </div>
 
       {notice && <div className="dm-notice">✓ {notice}</div>}
+
+      {canReview && (anomalies.length > 0 || anomalyError) && (
+        <section className="dm-anomaly-panel">
+          <div className="dm-anomaly-head">
+            <div>
+              <div className="dm-anomaly-title">
+                <span className="dm-anomaly-mark">!</span>
+                Demand anomalies
+                {anomalies.length > 0 && <span className="dm-anomaly-count">{anomalies.length}</span>}
+              </div>
+              <div className="dm-anomaly-sub">
+                New requests that overlap with recently fulfilled, unconsumed stock or open
+                demands.
+              </div>
+            </div>
+          </div>
+
+          {anomalyError && <div className="dm-anomaly-error">{anomalyError}</div>}
+
+          <div className="dm-anomaly-list">
+            {anomalies.map((anomaly) => (
+              <div className="dm-anomaly-item" key={anomaly.alertId}>
+                <div className="dm-anomaly-item-main">
+                  <div className="dm-anomaly-item-title">
+                    <span>{anomaly.request?.requestNumber ?? anomaly.title}</span>
+                    <span className={`dm-severity dm-severity-${anomaly.severity}`}>
+                      {anomaly.severity}
+                    </span>
+                  </div>
+                  <div className="dm-anomaly-message">{anomaly.message}</div>
+                  <div className="dm-anomaly-meta">
+                    {anomaly.department && <span>{anomaly.department.deptName}</span>}
+                    {anomaly.relatedRequest && (
+                      <span>
+                        Related {anomaly.relatedRequest.requestNumber} ·{' '}
+                        {STATUS_LABELS[anomaly.relatedRequest.status]} ·{' '}
+                        {anomaly.relatedRequest.requesterName}
+                      </span>
+                    )}
+                    <span>{fmtDateTime(anomaly.triggeredAt)}</span>
+                  </div>
+                </div>
+                <div className="dm-anomaly-actions">
+                  <button
+                    className="dm-btn dm-btn-ghost dm-btn-sm"
+                    onClick={() => anomaly.request && setSelected(anomaly.request)}
+                    disabled={!anomaly.request}
+                  >
+                    View request
+                  </button>
+                  <button
+                    className="dm-btn dm-btn-warn dm-btn-sm"
+                    onClick={() => acknowledgeAnomaly(anomaly.alertId)}
+                    disabled={acknowledgingId === anomaly.alertId}
+                  >
+                    {acknowledgingId === anomaly.alertId ? 'Saving…' : 'Acknowledge'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="dm-card">
         <div className="dm-toolbar">
@@ -274,7 +464,17 @@ export default function DemandRequests({ user }: { user: SessionUser }) {
                 rows.map((row) => (
                   <tr key={row.requestId}>
                     <td>
-                      <div className="dm-request-number">{row.requestNumber}</div>
+                      <div className="dm-request-number">
+                        {row.requestNumber}
+                        {row.hasActiveAnomaly && (
+                          <span
+                            className="dm-table-anomaly-tag"
+                            title={row.anomaly?.title || 'Active anomaly alert'}
+                          >
+                            ! Anomaly
+                          </span>
+                        )}
+                      </div>
                       <div className="dm-request-date">{fmtDateTime(row.createdAt)}</div>
                     </td>
                     <td>
@@ -350,6 +550,12 @@ function NewDemandModal({
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [lineAnomalies, setLineAnomalies] = useState<Record<number, string>>({});
+  const [anomalyWarning, setAnomalyWarning] = useState<{
+    message: string;
+    anomalies: ClientDemandAnomaly[];
+  } | null>(null);
+  const [anomalyExplanation, setAnomalyExplanation] = useState('');
   const nextKey = useRef(2);
 
   useEffect(() => {
@@ -375,22 +581,91 @@ function NewDemandModal({
     return map;
   }, [options]);
 
+  const checkSequence = useRef(0);
+
+  // Debounced inline check for potential anomalies as items and quantities are selected
+  useEffect(() => {
+    if (!deptId) return;
+    const validLines = lines.filter((l) => Number(l.itemId) > 0 && Number(l.quantity) > 0);
+    if (validLines.length === 0) return;
+
+    const seq = ++checkSequence.current;
+    const timer = setTimeout(() => {
+      apiRequest<{ hasAnomalies: boolean; anomalies: ClientDemandAnomaly[] }>(
+        '/api/demands/check-anomalies',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deptId: Number(deptId),
+            items: validLines.map((l) => ({
+              itemId: Number(l.itemId),
+              quantity: Number(l.quantity),
+            })),
+          }),
+        }
+      )
+        .then((data) => {
+          if (seq !== checkSequence.current) return;
+          if (!data.hasAnomalies) {
+            setLineAnomalies({});
+            return;
+          }
+          const map: Record<number, string> = {};
+          data.anomalies.forEach((a) => {
+            const matchedLine = lines.find((l) => Number(l.itemId) === a.newItem.itemId);
+            if (matchedLine) {
+              map[matchedLine.key] =
+                a.type === 'unconsumed_stock'
+                  ? `Notice: ${a.priorRequest.unconsumedQty} ${a.newItem.unit} from ${a.priorRequest.requestNumber} is still unconsumed in your department.`
+                  : `Notice: Similar request ${a.priorRequest.requestNumber} (${a.priorRequest.status}) is already open.`;
+            }
+          });
+          setLineAnomalies(map);
+        })
+        .catch(() => {});
+    }, 350);
+
+    return () => {
+      clearTimeout(timer);
+      checkSequence.current += 1;
+    };
+  }, [deptId, lines]);
+
   const updateLine = (key: number, patch: Partial<LineDraft>) => {
+    setAnomalyWarning(null);
+    setLineAnomalies((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
     setLines((prev) => prev.map((line) => (line.key === key ? { ...line, ...patch } : line)));
   };
 
   const addLine = () => {
+    setAnomalyWarning(null);
     setLines((prev) => [...prev, { key: nextKey.current++, itemId: '', quantity: '' }]);
   };
 
   const removeLine = (key: number) => {
+    setAnomalyWarning(null);
+    setLineAnomalies((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
     setLines((prev) => (prev.length === 1 ? prev : prev.filter((line) => line.key !== key)));
   };
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submitRequest = async (force = false) => {
     setFormError('');
     setErrors({});
+    if (!force) {
+      setAnomalyWarning(null);
+      setAnomalyExplanation('');
+    }
 
     if (!deptId) {
       setFormError('Select a department for this request.');
@@ -412,28 +687,59 @@ function NewDemandModal({
       chosen.add(itemId);
     }
 
+    if (force && !anomalyExplanation.trim()) {
+      setFormError('Please enter an explanation for the HOD before submitting.');
+      return;
+    }
+
     setSaving(true);
     try {
-      const data = await apiRequest<{ request: DemandRow }>('/api/demands', {
+      const data = await apiRequest<{ request: DemandRow; anomalyRaised?: boolean }>('/api/demands', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           deptId: Number(deptId),
           neededBy: neededBy || null,
           justification,
+          confirmAnomaly: force,
+          anomalyExplanation: force ? anomalyExplanation.trim() : null,
           items: lines.map((line) => ({
             itemId: Number(line.itemId),
             quantity: Number(line.quantity),
           })),
         }),
       });
-      onSaved(`Request ${data.request.requestNumber} submitted`);
+      const note = data.anomalyRaised
+        ? `Request ${data.request.requestNumber} submitted with Anomaly Alert sent to HOD`
+        : `Request ${data.request.requestNumber} submitted`;
+      onSaved(note);
     } catch (err: unknown) {
-      const apiError = err as Error & { fields?: Record<string, string> };
+      const apiError = err as Error & {
+        fields?: Record<string, string>;
+        code?: string;
+        anomalies?: ClientDemandAnomaly[];
+      };
+      if (
+        apiError.code === 'DEMAND_ANOMALY' &&
+        apiError.anomalies &&
+        apiError.anomalies.length > 0
+      ) {
+        setAnomalyWarning({
+          message: apiError.message || 'Anomalies detected for this request.',
+          anomalies: apiError.anomalies,
+        });
+        setSaving(false);
+        return;
+      }
       setFormError(apiError.message || 'Request failed');
       if (apiError.fields) setErrors(apiError.fields);
       setSaving(false);
     }
+  };
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    void submitRequest(false);
   };
 
   const locked = options && !options.canChooseDepartment;
@@ -462,6 +768,79 @@ function NewDemandModal({
             {optionsError && <div className="dm-error">{optionsError}</div>}
             {!options && !optionsError && <div className="dm-loading-note">Loading catalog…</div>}
 
+            {anomalyWarning && (
+              <div className="dm-similar-warning">
+                <div className="dm-similar-head">
+                  <span className="dm-similar-icon">!</span>
+                  <div>
+                    <div className="dm-similar-title">Demand Anomaly Detected</div>
+                    <div className="dm-similar-sub">
+                      {anomalyWarning.message} This request overlaps with recent unconsumed stock or open demands.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dm-similar-list">
+                  {anomalyWarning.anomalies.map((match, idx) => (
+                    <div
+                      className="dm-similar-item"
+                      key={`${match.priorRequest.requestId}-${match.priorItem.itemId}-${idx}`}
+                    >
+                      <div>
+                        <div className="dm-similar-item-name">{match.newItem.itemName}</div>
+                        <div className="dm-similar-item-meta">
+                          {match.type === 'unconsumed_stock' ? (
+                            <span>
+                              Fulfilled on {fmtDate(match.priorRequest.fulfilledAt || match.priorRequest.createdAt)} ·{' '}
+                              <strong style={{ color: '#b45309' }}>
+                                {fmtQty(match.priorRequest.unconsumedQty ?? 0)} {match.priorRequest.unit} unconsumed
+                              </strong>{' '}
+                              ({fmtQty(match.priorRequest.consumedQty ?? 0)} consumed to date of{' '}
+                              {fmtQty(match.priorRequest.fulfilledQty ?? 0)} fulfilled)
+                            </span>
+                          ) : (
+                            <span>
+                              {match.priorRequest.requestNumber} · {STATUS_LABELS[match.priorRequest.status]} ·{' '}
+                              {fmtQty(match.priorItem.quantity)} {match.priorItem.unit} ·{' '}
+                              {match.priorRequest.requesterName} · {fmtDate(match.priorRequest.createdAt)}
+                            </span>
+                          )}
+                        </div>
+                        {match.message && (
+                          <div className="dm-similar-item-meta" style={{ marginTop: 2 }}>
+                            {match.message}
+                          </div>
+                        )}
+                      </div>
+                      <span
+                        className={`dm-match-tag${match.type === 'unconsumed_stock' ? ' dm-match-exact' : ''}`}
+                      >
+                        {match.type === 'unconsumed_stock' ? 'Unconsumed stock' : 'Open demand'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="dm-anomaly-explanation-block">
+                  <label htmlFor="dm-anomaly-input">
+                    Explanation for HOD <span className="dm-req">*</span>
+                  </label>
+                  <textarea
+                    id="dm-anomaly-input"
+                    rows={2}
+                    value={anomalyExplanation}
+                    onChange={(e) => setAnomalyExplanation(e.target.value)}
+                    placeholder="State why additional stock is needed while previous stock remains unconsumed (e.g. reserved for upcoming surgical camp, damaged packing, emergency surge)…"
+                    required
+                  />
+                </div>
+
+                <div className="dm-similar-note">
+                  Submitting will flag an Anomaly Alert directly to your Head of Department (HOD) for review.
+                </div>
+              </div>
+            )}
+
             {options && (
               <>
                 <div className="dm-form-grid">
@@ -469,7 +848,11 @@ function NewDemandModal({
                     <label>Department <span className="dm-req">*</span></label>
                     <select
                       value={deptId}
-                      onChange={(e) => setDeptId(e.target.value)}
+                      onChange={(e) => {
+                        setAnomalyWarning(null);
+                        setLineAnomalies({});
+                        setDeptId(e.target.value);
+                      }}
                       disabled={Boolean(locked)}
                       className={locked ? 'dm-readonly' : undefined}
                     >
@@ -523,37 +906,46 @@ function NewDemandModal({
                   </div>
                   {lines.map((line) => {
                     const item = itemsById.get(Number(line.itemId));
+                    const lineWarning = lineAnomalies[line.key];
                     return (
-                      <div className="dm-line" key={line.key}>
-                        <select
-                          value={line.itemId}
-                          onChange={(e) => updateLine(line.key, { itemId: e.target.value })}
-                        >
-                          <option value="">Select item…</option>
-                          {options.items.map((option) => (
-                            <option key={option.itemId} value={option.itemId}>
-                              {option.itemName} ({option.itemCode})
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.001"
-                          value={line.quantity}
-                          onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
-                          placeholder="0"
-                        />
-                        <div className="dm-unit">{item?.unit ?? '—'}</div>
-                        <button
-                          type="button"
-                          className="dm-line-remove"
-                          onClick={() => removeLine(line.key)}
-                          disabled={lines.length === 1}
-                          aria-label="Remove item"
-                        >
-                          ×
-                        </button>
+                      <div className="dm-line-wrapper" key={line.key}>
+                        <div className="dm-line">
+                          <select
+                            value={line.itemId}
+                            onChange={(e) => updateLine(line.key, { itemId: e.target.value })}
+                          >
+                            <option value="">Select item…</option>
+                            {options.items.map((option) => (
+                              <option key={option.itemId} value={option.itemId}>
+                                {option.itemName} ({option.itemCode})
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            value={line.quantity}
+                            onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
+                            placeholder="0"
+                          />
+                          <div className="dm-unit">{item?.unit ?? '—'}</div>
+                          <button
+                            type="button"
+                            className="dm-line-remove"
+                            onClick={() => removeLine(line.key)}
+                            disabled={lines.length === 1}
+                            aria-label="Remove item"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {lineWarning && (
+                          <div className="dm-line-anomaly-inline">
+                            <span className="dm-mini-icon">!</span>
+                            <span>{lineWarning}</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -564,12 +956,36 @@ function NewDemandModal({
           </div>
 
           <div className="dm-modal-foot">
-            <button type="button" className="dm-btn dm-btn-ghost" onClick={onClose} disabled={saving}>
-              Cancel
-            </button>
-            <button type="submit" className="dm-btn dm-btn-primary" disabled={saving || !options}>
-              {saving ? 'Submitting…' : 'Submit request'}
-            </button>
+            {anomalyWarning ? (
+              <>
+                <button
+                  type="button"
+                  className="dm-btn dm-btn-ghost"
+                  onClick={() => setAnomalyWarning(null)}
+                  disabled={saving}
+                >
+                  Back to edit
+                </button>
+                <button
+                  type="button"
+                  className="dm-btn dm-btn-warn"
+                  onClick={() => void submitRequest(true)}
+                  disabled={saving || !options || !anomalyExplanation.trim()}
+                  title={!anomalyExplanation.trim() ? 'Please provide an explanation for the HOD' : undefined}
+                >
+                  {saving ? 'Submitting…' : 'Submit anyway & Alert HOD'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="dm-btn dm-btn-ghost" onClick={onClose} disabled={saving}>
+                  Cancel
+                </button>
+                <button type="submit" className="dm-btn dm-btn-primary" disabled={saving || !options}>
+                  {saving ? 'Submitting…' : 'Submit request'}
+                </button>
+              </>
+            )}
           </div>
         </form>
       </div>

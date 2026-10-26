@@ -6,10 +6,14 @@ import { writeAudit } from '@/lib/auth/audit'
 import {
   demandInclude,
   demandVisibilityWhere,
+  detectDemandAnomalies,
+  formatAnomalyAlertSummary,
   parseDemandInput,
+  redactAnomalyRequesters,
   serializeDemand,
+  severityRank,
 } from '@/lib/demand'
-import { AuditAction, type Prisma } from '@/generated/prisma/client'
+import { AlertType, AuditAction, type Prisma } from '@/generated/prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -121,6 +125,55 @@ export async function POST(req: Request) {
     }
     const units = new Map(itemRows.map((item) => [item.itemId, item.unit]))
 
+    // Run smart anomaly detection (unconsumed stock + open overlapping demands)
+    const detectedAnomalies = await detectDemandAnomalies(
+      targetDeptId,
+      parsed.data.items.map((i) => ({ itemId: i.itemId, quantity: i.quantity })),
+      prisma
+    )
+
+    let anomalyExplanation: string | null = null
+
+    if (detectedAnomalies.length > 0) {
+      if (!parsed.data.confirmAnomaly) {
+        const hasUnconsumed = detectedAnomalies.some((a) => a.type === 'unconsumed_stock')
+        const errorMessage = hasUnconsumed
+          ? 'Similar stock was recently fulfilled for this department and has not yet been consumed.'
+          : detectedAnomalies.length === 1
+          ? 'A similar request is already open for this department.'
+          : `${detectedAnomalies.length} similar requests are already open for this department.`
+
+        return noStoreJson(
+          {
+            error: errorMessage,
+            code: 'DEMAND_ANOMALY',
+            anomalies:
+              auth.user.role === 'requester'
+                ? redactAnomalyRequesters(detectedAnomalies)
+                : detectedAnomalies,
+          },
+          { status: 409 }
+        )
+      }
+
+      anomalyExplanation = (parsed.data.anomalyExplanation ?? '').trim()
+      if (!anomalyExplanation) {
+        return noStoreJson(
+          {
+            error: 'Explain why this request is needed before overriding the anomaly.',
+            fields: { anomalyExplanation: 'An explanation is required.' },
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+    const finalJustification = anomalyExplanation
+      ? parsed.data.justification
+        ? `${parsed.data.justification}\n\n[Anomaly Justification]: ${anomalyExplanation}`
+        : `[Anomaly Justification]: ${anomalyExplanation}`
+      : parsed.data.justification || ''
+
     const created = await prisma.$transaction(async (tx) => {
       const seq = await tx.$queryRaw<{ request_id: number | bigint }[]>`
         SELECT nextval(pg_get_serial_sequence('demand_requests', 'request_id')) AS request_id
@@ -128,14 +181,14 @@ export async function POST(req: Request) {
       const requestId = Number(seq[0]?.request_id ?? 0)
       if (!requestId) throw new Error('Failed to allocate demand request id')
 
-      return tx.demandRequest.create({
+      const demand = await tx.demandRequest.create({
         data: {
           requestId,
           requestNumber: `DEMAND-${new Date().getFullYear()}-${String(requestId).padStart(4, '0')}`,
           deptId: targetDeptId,
           requestedBy: auth.user.userId,
           neededBy: parsed.data.neededBy ? new Date(`${parsed.data.neededBy}T00:00:00.000Z`) : null,
-          justification: parsed.data.justification,
+          justification: finalJustification || null,
           items: {
             create: parsed.data.items.map((line) => ({
               itemId: line.itemId,
@@ -147,27 +200,95 @@ export async function POST(req: Request) {
         },
         include: demandInclude,
       })
-    })
+
+      const primaryAnomaly =
+        detectedAnomalies.length > 0
+          ? detectedAnomalies.reduce((worst, current) =>
+              severityRank(current.severity) < severityRank(worst.severity) ? current : worst
+            )
+          : null
+
+      const anomalyAlert =
+        primaryAnomaly && anomalyExplanation
+          ? await tx.alert.create({
+              data: {
+                alertType: AlertType.anomaly,
+                itemId: primaryAnomaly.newItem.itemId,
+                severity: primaryAnomaly.severity,
+                alertTitle:
+                  primaryAnomaly.type === 'unconsumed_stock'
+                    ? `Unconsumed Stock Anomaly: ${demand.requestNumber}`
+                    : `Possible duplicate demand: ${demand.requestNumber}`,
+                alertMessage: formatAnomalyAlertSummary(
+                  demand.requestNumber,
+                  detectedAnomalies,
+                  anomalyExplanation
+                ),
+                deptId: targetDeptId,
+                demandRequestId: demand.requestId,
+                relatedRequestId: primaryAnomaly.priorRequest.requestId,
+              },
+              select: { alertId: true, severity: true },
+            })
+          : null
+
+      const refreshedDemand = await tx.demandRequest.findUniqueOrThrow({
+        where: { requestId: demand.requestId },
+        include: demandInclude,
+      })
+
+      return { demand: refreshedDemand, anomalyAlert, primaryAnomaly }
+    }, { timeout: 20000 })
 
     await writeAudit({
       tableName: 'demand_requests',
-      recordId: created.requestId,
+      recordId: created.demand.requestId,
       action: AuditAction.CREATE,
       changedBy: auth.user.userId,
       newValues: {
-        requestNumber: created.requestNumber,
-        deptId: created.deptId,
-        status: created.status,
-        neededBy: created.neededBy,
-        items: created.items.map((line) => ({
+        requestNumber: created.demand.requestNumber,
+        deptId: created.demand.deptId,
+        status: created.demand.status,
+        neededBy: created.demand.neededBy,
+        items: created.demand.items.map((line) => ({
           itemId: line.itemId,
           quantity: line.quantity.toString(),
         })),
+        anomalyRaised: Boolean(created.anomalyAlert),
+        anomalyTypes: created.primaryAnomaly
+          ? [...new Set(detectedAnomalies.map((anomaly) => anomaly.type))]
+          : undefined,
+        anomalyExplanation: created.anomalyAlert ? anomalyExplanation : undefined,
       },
-      notes: 'Demand request raised',
+      notes: created.anomalyAlert
+        ? `Demand request raised with anomaly alert for HOD (${created.demand.requestNumber})`
+        : 'Demand request raised',
     })
 
-    return noStoreJson({ request: serializeDemand(created) }, { status: 201 })
+    if (created.anomalyAlert) {
+      await writeAudit({
+        tableName: 'alerts',
+        recordId: created.anomalyAlert.alertId,
+        action: AuditAction.CREATE,
+        changedBy: auth.user.userId,
+        newValues: {
+          alertType: AlertType.anomaly,
+          severity: created.anomalyAlert.severity,
+          deptId: targetDeptId,
+          demandRequestId: created.demand.requestId,
+          relatedRequestId: created.primaryAnomaly?.priorRequest.requestId ?? null,
+        },
+        notes: `Demand anomaly raised to HOD for ${created.demand.requestNumber}`,
+      })
+    }
+
+    return noStoreJson(
+      {
+        request: serializeDemand(created.demand),
+        anomalyRaised: Boolean(created.anomalyAlert),
+      },
+      { status: 201 }
+    )
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('POST /api/demands error:', err)

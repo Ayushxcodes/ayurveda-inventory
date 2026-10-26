@@ -19,7 +19,7 @@ async function fetchDashboardData(role: Role, deptId: number | null) {
       (SELECT COUNT(*)::int FROM items WHERE is_active = true AND (${deptId}::int IS NULL OR primary_dept_id = ${deptId}::int)) AS "totalItems",
       (SELECT COUNT(*)::int FROM items WHERE is_active = true AND category = 'CAPEX' AND (${deptId}::int IS NULL OR primary_dept_id = ${deptId}::int)) AS "capexCount",
       (SELECT COUNT(*)::int FROM items WHERE is_active = true AND category = 'OPEX' AND (${deptId}::int IS NULL OR primary_dept_id = ${deptId}::int)) AS "opexCount",
-      (SELECT COUNT(*)::int FROM alerts a JOIN items i ON i.item_id = a.item_id WHERE a.status = 'active' AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)) AS "activeAlerts",
+      (SELECT COUNT(*)::int FROM alerts a JOIN items i ON i.item_id = a.item_id WHERE a.status = 'active' AND (${deptId}::int IS NULL OR COALESCE(a.dept_id, i.primary_dept_id) = ${deptId}::int)) AS "activeAlerts",
       (SELECT COUNT(*)::int FROM grn_entries g JOIN items i ON i.item_id = g.item_id WHERE g.grn_date >= ${firstDayOfMonth} AND (${deptId}::int IS NULL OR i.primary_dept_id = ${deptId}::int)) AS "grnThisMonth",
       (
         SELECT COALESCE(json_agg(rg), '[]'::json) FROM (

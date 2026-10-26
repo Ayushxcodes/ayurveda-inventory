@@ -30,6 +30,17 @@ Users raise multi-line requests against the item catalog from **Demand Requests*
 - Procurement Officers, Admins and Super Admins mark approved requests as fulfilled.
 - Requesters see only their own requests, HODs see their department, and procurement/admin roles see all. Every transition is audited.
 
+### Anomaly alerts
+
+Before a request is accepted, the system checks the department's last 60 days of demand history:
+
+- **Unconsumed stock** — a matching item was recently fulfilled, but stock issues since that fulfilment are less than the quantity fulfilled.
+- **Open demand** — a matching item is already on a pending or approved request for the same department.
+
+Matching is an exact item, or a similar item name within the same sub-category. When either is found, the requester sees the prior request and the remaining quantity, and must explain why the additional stock is needed before submitting. The request is still created, and the explanation is stored in the justification and the audit log.
+
+The alert appears in the **Demand anomalies** panel for the department's HOD and for admins. Acknowledging it removes it from the panel; approving, rejecting, or cancelling the request automatically acknowledges its active anomaly.
+
 ## Prerequisites
 
 - Node.js 20+ (24 recommended)

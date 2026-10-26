@@ -7,7 +7,7 @@ import {
 } from '@/lib/auth/roles'
 import { writeAudit } from '@/lib/auth/audit'
 import { demandInclude, demandVisibilityWhere, serializeDemand } from '@/lib/demand'
-import { AuditAction, type Prisma } from '@/generated/prisma/client'
+import { AlertStatus, AlertType, AuditAction, type Prisma } from '@/generated/prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -134,6 +134,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (result.count !== 1) {
         throw new DemandHttpError('Request was updated by someone else. Reload and try again.', 409)
       }
+
+      if (
+        demandAction === 'approve' ||
+        demandAction === 'reject' ||
+        demandAction === 'cancel'
+      ) {
+        await tx.alert.updateMany({
+          where: {
+            demandRequestId: requestId,
+            alertType: AlertType.anomaly,
+            status: AlertStatus.active,
+          },
+          data: {
+            status: AlertStatus.acknowledged,
+            acknowledgedBy: auth.user.userId,
+            acknowledgedAt: now,
+          },
+        })
+      }
+
       return tx.demandRequest.findUniqueOrThrow({
         where: { requestId },
         include: demandInclude,

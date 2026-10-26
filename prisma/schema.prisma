@@ -50,6 +50,8 @@ enum UserRole {
 
 enum DemandStatus {
   pending
+  pending_hod
+  pending_admin
   approved
   rejected
   fulfilled
@@ -209,6 +211,7 @@ model Department {
   items          Item[]
   stockIssues    StockIssue[]
   demandRequests DemandRequest[]
+  alerts         Alert[]
 
   @@map("departments")
 }
@@ -455,7 +458,9 @@ model DemandRequest {
   requester  User                @relation("DemandRequestedBy", fields: [requestedBy], references: [userId])
   reviewer   User?               @relation("DemandReviewedBy", fields: [reviewedBy], references: [userId])
   fulfiller  User?               @relation("DemandFulfilledBy", fields: [fulfilledBy], references: [userId])
-  items      DemandRequestItem[]
+  items                DemandRequestItem[]
+  anomalyAlerts        Alert[] @relation("DemandAnomalyRequest")
+  relatedAnomalyAlerts Alert[] @relation("DemandAnomalyRelated")
 
   @@index([deptId, status])
   @@index([requestedBy])
@@ -528,13 +533,21 @@ model Alert {
   snoozedUntil    DateTime?     @map("snoozed_until")
   triggeredAt     DateTime      @default(now()) @map("triggered_at")
   isVisible       Boolean       @default(true) @map("is_visible")
+  deptId          Int?          @map("dept_id")
+  demandRequestId Int?          @map("demand_request_id")
+  relatedRequestId Int?         @map("related_request_id")
 
   // Relations
-  item          Item         @relation(fields: [itemId], references: [itemId])
-  batch         ItemBatch?   @relation(fields: [batchId], references: [batchId])
-  amc           AmcContract? @relation(fields: [amcId], references: [amcId])
-  acknowledger  User?        @relation(fields: [acknowledgedBy], references: [userId])
+  item           Item           @relation(fields: [itemId], references: [itemId])
+  batch          ItemBatch?     @relation(fields: [batchId], references: [batchId])
+  amc            AmcContract?   @relation(fields: [amcId], references: [amcId])
+  acknowledger   User?          @relation(fields: [acknowledgedBy], references: [userId])
+  department     Department?    @relation(fields: [deptId], references: [deptId])
+  demandRequest  DemandRequest? @relation("DemandAnomalyRequest", fields: [demandRequestId], references: [requestId], onDelete: Cascade)
+  relatedRequest DemandRequest? @relation("DemandAnomalyRelated", fields: [relatedRequestId], references: [requestId], onDelete: SetNull)
 
+  @@index([alertType, status, deptId])
+  @@index([demandRequestId])
   @@map("alerts")
 }
 
