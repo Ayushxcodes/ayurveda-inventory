@@ -32,7 +32,8 @@ export default function Sidebar({
       activeTab !== "CAPEX" &&
       activeTab !== "OPEX" &&
       activeTab !== "USERS" &&
-      activeTab !== "DEMAND");
+      activeTab !== "DEMAND" &&
+      activeTab !== "DEPT_ISSUES");
 
   const canOpenRegistry = canAccessTab(user.role, "REG");
   const canOpenCapex = canAccessTab(user.role, "CAPEX");
@@ -41,8 +42,9 @@ export default function Sidebar({
   const canOpenIssue = canAccessTab(user.role, "ISS");
   const canOpenUsers = canAccessTab(user.role, "USERS");
   const canOpenDemand = canAccessTab(user.role, "DEMAND");
+  const canOpenDeptIssues = canAccessTab(user.role, "DEPT_ISSUES");
   const showInsights = canOpenRegistry || canOpenCapex || canOpenOpex;
-  const showCategories = canOpenCapex || canOpenOpex;
+  const showCategories = canOpenCapex || canOpenOpex || canOpenDeptIssues;
 
   return (
     <>
@@ -394,6 +396,27 @@ export default function Sidebar({
                     </svg>
                   </div>
                   <span>OPEX Consumables</span>
+                </div>
+              )}
+
+              {/* Department Issues & Holdings */}
+              {canOpenDeptIssues && (
+                <div
+                  className={`nav-item ${activeTab === "DEPT_ISSUES" ? "active" : ""}`}
+                  onClick={() => {
+                    setActiveTab("DEPT_ISSUES");
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="nav-icon" style={{ color: "#f59e0b" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      <polyline points="9 22 9 12 15 12 15 22" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <span>Dept Holdings &amp; Issues</span>
                 </div>
               )}
             </div>

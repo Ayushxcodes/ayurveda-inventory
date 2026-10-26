@@ -13,7 +13,15 @@ import { AuditAction, type Prisma } from '@/generated/prisma/client'
 
 export const dynamic = 'force-dynamic'
 
-const STATUSES = ['pending', 'approved', 'rejected', 'fulfilled', 'cancelled'] as const
+const STATUSES = [
+  'pending_hod',
+  'pending_admin',
+  'pending',
+  'approved',
+  'rejected',
+  'fulfilled',
+  'cancelled',
+] as const
 
 export async function GET(req: Request) {
   const auth = await apiGuard(DEMAND_ROLES)
@@ -30,7 +38,9 @@ export async function GET(req: Request) {
     const statusParam = url.searchParams.get('status') ?? ''
 
     const where: Prisma.DemandRequestWhereInput = { ...scope }
-    if ((STATUSES as readonly string[]).includes(statusParam)) {
+    if (statusParam === 'pending') {
+      where.status = { in: ['pending_hod', 'pending_admin', 'pending'] }
+    } else if ((STATUSES as readonly string[]).includes(statusParam)) {
       where.status = statusParam as (typeof STATUSES)[number]
     }
     if (q) {
@@ -121,6 +131,11 @@ export async function POST(req: Request) {
     }
     const units = new Map(itemRows.map((item) => [item.itemId, item.unit]))
 
+    // If HOD creates request directly, it pre-approves HOD step and moves to Admin stock check
+    const isHodCreator = auth.user.role === 'hod'
+    const initialStatus = isHodCreator ? 'pending_admin' : 'pending_hod'
+    const initialStage = isHodCreator ? 'admin' : 'hod'
+
     const created = await prisma.$transaction(async (tx) => {
       const seq = await tx.$queryRaw<{ request_id: number | bigint }[]>`
         SELECT nextval(pg_get_serial_sequence('demand_requests', 'request_id')) AS request_id
@@ -128,14 +143,19 @@ export async function POST(req: Request) {
       const requestId = Number(seq[0]?.request_id ?? 0)
       if (!requestId) throw new Error('Failed to allocate demand request id')
 
-      return tx.demandRequest.create({
+      const row = await tx.demandRequest.create({
         data: {
           requestId,
           requestNumber: `DEMAND-${new Date().getFullYear()}-${String(requestId).padStart(4, '0')}`,
           deptId: targetDeptId,
           requestedBy: auth.user.userId,
+          status: initialStatus,
+          stage: initialStage,
           neededBy: parsed.data.neededBy ? new Date(`${parsed.data.neededBy}T00:00:00.000Z`) : null,
           justification: parsed.data.justification,
+          hodApprovedBy: isHodCreator ? auth.user.userId : null,
+          hodApprovedAt: isHodCreator ? new Date() : null,
+          hodNotes: isHodCreator ? 'Created and approved by HOD' : null,
           items: {
             create: parsed.data.items.map((line) => ({
               itemId: line.itemId,
@@ -147,6 +167,22 @@ export async function POST(req: Request) {
         },
         include: demandInclude,
       })
+
+      await tx.demandActivityLog.create({
+        data: {
+          requestId: row.requestId,
+          actorId: auth.user.userId,
+          actorName: auth.user.fullName,
+          actorRole: auth.user.role,
+          action: 'CREATED',
+          fromStatus: null,
+          toStatus: initialStatus,
+          notes: parsed.data.justification || (isHodCreator ? 'Created & approved by HOD for Admin stock check' : 'Request submitted for HOD approval'),
+          outOfStock: false,
+        },
+      })
+
+      return row
     })
 
     await writeAudit({

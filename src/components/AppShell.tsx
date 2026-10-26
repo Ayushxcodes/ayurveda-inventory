@@ -20,6 +20,7 @@ const AyurVaidyaGRN = dynamic(() => import('./AyurVaidyaGRN'), { ssr: false });
 const AyurVaidyaStockIssue = dynamic(() => import('./AyurVaidyaStockIssue'), { ssr: false });
 const UsersDashboard = dynamic(() => import('./UsersDashboard'), { ssr: false });
 const DemandRequests = dynamic(() => import('./DemandRequests'), { ssr: false });
+const DepartmentIssuesDashboard = dynamic(() => import('./DepartmentIssuesDashboard'), { ssr: false });
 
 const PAGE_TITLES: Record<AppTab, string> = {
   ALL: 'Dashboard',
@@ -30,6 +31,7 @@ const PAGE_TITLES: Record<AppTab, string> = {
   ISS: 'Stock Issue',
   USERS: 'User Management',
   DEMAND: 'Demand Requests',
+  DEPT_ISSUES: 'Department Issues & Holdings',
 };
 
 const BREADCRUMBS: Record<AppTab, string> = {
@@ -41,6 +43,7 @@ const BREADCRUMBS: Record<AppTab, string> = {
   ISS: 'Stock Issue',
   USERS: 'User Management',
   DEMAND: 'Demand Requests',
+  DEPT_ISSUES: 'Department Holdings',
 };
 
 export default function AppShell({ user }: { user: SessionUser }) {
@@ -185,6 +188,11 @@ export default function AppShell({ user }: { user: SessionUser }) {
                     OPEX only
                   </div>
                 )}
+                {canAccessTab(user.role, 'DEPT_ISSUES') && (
+                  <div className={`tab ${activeTab === 'DEPT_ISSUES' ? 'active' : ''}`} onClick={() => navigate('DEPT_ISSUES')}>
+                    Dept Holdings
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -207,6 +215,8 @@ export default function AppShell({ user }: { user: SessionUser }) {
             <UsersDashboard user={user} />
           ) : activeTab === 'DEMAND' ? (
             <DemandRequests user={user} />
+          ) : activeTab === 'DEPT_ISSUES' ? (
+            <DepartmentIssuesDashboard user={user} />
           ) : null}
         </div>
       </div>

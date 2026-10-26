@@ -2,7 +2,6 @@ import prisma from '@/lib/prisma'
 import { apiGuard, assertSameOrigin, noStoreJson } from '@/lib/auth/guards'
 import {
   DEMAND_FULFIL_ROLES,
-  DEMAND_REVIEW_ROLES,
   DEMAND_ROLES,
 } from '@/lib/auth/roles'
 import { writeAudit } from '@/lib/auth/audit'
@@ -11,15 +10,18 @@ import { AuditAction, type Prisma } from '@/generated/prisma/client'
 
 export const dynamic = 'force-dynamic'
 
-const ACTIONS = ['approve', 'reject', 'fulfil', 'cancel'] as const
-type DemandAction = (typeof ACTIONS)[number]
+const ACTIONS = [
+  'approve',
+  'reject',
+  'hod_approve',
+  'hod_reject',
+  'admin_approve',
+  'admin_reject',
+  'fulfil',
+  'cancel',
+] as const
 
-const ACTION_LABELS: Record<DemandAction, string> = {
-  approve: 'approved',
-  reject: 'rejected',
-  fulfil: 'fulfilled',
-  cancel: 'cancelled',
-}
+type DemandAction = (typeof ACTIONS)[number]
 
 class DemandHttpError extends Error {
   status: number
@@ -54,9 +56,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (notes.length > 1000) {
       return noStoreJson({ error: 'Notes must be 1000 characters or fewer' }, { status: 400 })
     }
-    if (demandAction === 'reject' && !notes) {
-      return noStoreJson({ error: 'A reason is required when rejecting a request' }, { status: 400 })
-    }
+
+    const isOutOfStock = Boolean(body?.outOfStock)
 
     const scope = demandVisibilityWhere(auth.user)
     if (!scope) {
@@ -69,6 +70,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         requestId: true,
         requestNumber: true,
         status: true,
+        stage: true,
         deptId: true,
         requestedBy: true,
       },
@@ -77,53 +79,140 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return noStoreJson({ error: 'Demand request not found' }, { status: 404 })
     }
 
-    if (demandAction === 'approve' || demandAction === 'reject') {
-      if (!DEMAND_REVIEW_ROLES.includes(auth.user.role)) {
-        return noStoreJson({ error: 'Forbidden' }, { status: 403 })
+    const now = new Date()
+    const data: Prisma.DemandRequestUncheckedUpdateManyInput = {}
+    let logAction = ''
+    let nextStatus = ''
+
+    // Determine resolved action based on action string and current status
+    let effectiveAction = demandAction
+    if (demandAction === 'approve') {
+      if (existing.status === 'pending_hod') effectiveAction = 'hod_approve'
+      else if (existing.status === 'pending_admin' || existing.status === 'pending') effectiveAction = 'admin_approve'
+    } else if (demandAction === 'reject') {
+      if (existing.status === 'pending_hod') effectiveAction = 'hod_reject'
+      else if (existing.status === 'pending_admin' || existing.status === 'pending') effectiveAction = 'admin_reject'
+    }
+
+    if (effectiveAction === 'hod_approve') {
+      const isSuperAdmin = auth.user.role === 'super_admin'
+      const isDeptHod = auth.user.role === 'hod' && auth.user.deptId === existing.deptId
+      if (!isDeptHod && !isSuperAdmin) {
+        return noStoreJson({ error: 'Only the Department Head can provide Stage 1 approval' }, { status: 403 })
       }
-      if (auth.user.role === 'hod' && existing.requestedBy === auth.user.userId) {
-        return noStoreJson({ error: 'You cannot review your own demand request' }, { status: 403 })
+      if (auth.user.role === 'hod' && existing.requestedBy === auth.user.userId && !isSuperAdmin) {
+        return noStoreJson({ error: 'You cannot approve your own demand request' }, { status: 403 })
       }
-      if (existing.status !== 'pending') {
-        return noStoreJson({ error: 'Only pending requests can be reviewed' }, { status: 409 })
+      if (existing.status !== 'pending_hod' && existing.status !== 'pending') {
+        return noStoreJson({ error: 'Request is not waiting for HOD approval' }, { status: 409 })
       }
-    } else if (demandAction === 'fulfil') {
+
+      nextStatus = 'pending_admin'
+      logAction = 'HOD_APPROVED'
+      data.status = 'pending_admin'
+      data.stage = 'admin'
+      data.hodApprovedBy = auth.user.userId
+      data.hodApprovedAt = now
+      data.hodNotes = notes || null
+      data.reviewedBy = auth.user.userId
+      data.reviewedAt = now
+      data.reviewNotes = notes || null
+    } else if (effectiveAction === 'hod_reject') {
+      const isSuperAdmin = auth.user.role === 'super_admin'
+      const isDeptHod = auth.user.role === 'hod' && auth.user.deptId === existing.deptId
+      if (!isDeptHod && !isSuperAdmin) {
+        return noStoreJson({ error: 'Only the Department Head can reject at Stage 1' }, { status: 403 })
+      }
+      if (!notes) {
+        return noStoreJson({ error: 'A reason is required when rejecting a request' }, { status: 400 })
+      }
+      if (existing.status !== 'pending_hod' && existing.status !== 'pending') {
+        return noStoreJson({ error: 'Request is not pending HOD review' }, { status: 409 })
+      }
+
+      nextStatus = 'rejected'
+      logAction = 'HOD_REJECTED'
+      data.status = 'rejected'
+      data.stage = 'rejected'
+      data.rejectedBy = auth.user.userId
+      data.rejectedAt = now
+      data.rejectionStage = 'hod'
+      data.rejectionReason = notes
+      data.reviewedBy = auth.user.userId
+      data.reviewedAt = now
+      data.reviewNotes = notes
+    } else if (effectiveAction === 'admin_approve') {
+      const isAdmin = auth.user.role === 'admin' || auth.user.role === 'super_admin'
+      if (!isAdmin) {
+        return noStoreJson({ error: 'Only Admin can perform inventory stock verification and final approval' }, { status: 403 })
+      }
+      if (existing.status !== 'pending_admin' && existing.status !== 'pending') {
+        return noStoreJson({ error: 'Request is not waiting for Admin approval' }, { status: 409 })
+      }
+
+      nextStatus = 'approved'
+      logAction = 'ADMIN_APPROVED'
+      data.status = 'approved'
+      data.stage = 'completed'
+      data.adminApprovedBy = auth.user.userId
+      data.adminApprovedAt = now
+      data.adminNotes = notes || null
+      data.reviewedBy = auth.user.userId
+      data.reviewedAt = now
+      data.reviewNotes = notes || null
+    } else if (effectiveAction === 'admin_reject') {
+      const isAdmin = auth.user.role === 'admin' || auth.user.role === 'super_admin'
+      if (!isAdmin) {
+        return noStoreJson({ error: 'Only Admin can reject at Stage 2' }, { status: 403 })
+      }
+      const reason = notes || (isOutOfStock ? 'Item is currently out of stock in central inventory.' : '')
+      if (!reason) {
+        return noStoreJson({ error: 'A reason is required when rejecting a request' }, { status: 400 })
+      }
+      if (existing.status !== 'pending_admin' && existing.status !== 'pending') {
+        return noStoreJson({ error: 'Request is not waiting for Admin review' }, { status: 409 })
+      }
+
+      nextStatus = 'rejected'
+      logAction = 'ADMIN_REJECTED'
+      data.status = 'rejected'
+      data.stage = 'rejected'
+      data.outOfStock = isOutOfStock
+      data.rejectedBy = auth.user.userId
+      data.rejectedAt = now
+      data.rejectionStage = 'admin'
+      data.rejectionReason = reason
+      data.reviewedBy = auth.user.userId
+      data.reviewedAt = now
+      data.reviewNotes = reason
+    } else if (effectiveAction === 'fulfil') {
       if (!DEMAND_FULFIL_ROLES.includes(auth.user.role)) {
         return noStoreJson({ error: 'Forbidden' }, { status: 403 })
       }
       if (existing.status !== 'approved') {
         return noStoreJson({ error: 'Only approved requests can be fulfilled' }, { status: 409 })
       }
-    } else {
+
+      nextStatus = 'fulfilled'
+      logAction = 'STOCK_ISSUED'
+      data.status = 'fulfilled'
+      data.stage = 'completed'
+      data.fulfilledBy = auth.user.userId
+      data.fulfilledAt = now
+    } else if (effectiveAction === 'cancel') {
       const isOwner = existing.requestedBy === auth.user.userId
       const isOversight = auth.user.role === 'admin' || auth.user.role === 'super_admin'
       if (!isOwner && !isOversight) {
         return noStoreJson({ error: 'Forbidden' }, { status: 403 })
       }
-      if (existing.status !== 'pending') {
+      if (existing.status !== 'pending_hod' && existing.status !== 'pending_admin' && existing.status !== 'pending') {
         return noStoreJson({ error: 'Only pending requests can be cancelled' }, { status: 409 })
       }
-    }
 
-    const now = new Date()
-    const data: Prisma.DemandRequestUncheckedUpdateManyInput = {}
-
-    if (demandAction === 'approve') {
-      data.status = 'approved'
-      data.reviewedBy = auth.user.userId
-      data.reviewedAt = now
-      data.reviewNotes = notes || null
-    } else if (demandAction === 'reject') {
-      data.status = 'rejected'
-      data.reviewedBy = auth.user.userId
-      data.reviewedAt = now
-      data.reviewNotes = notes
-    } else if (demandAction === 'fulfil') {
-      data.status = 'fulfilled'
-      data.fulfilledBy = auth.user.userId
-      data.fulfilledAt = now
-    } else {
+      nextStatus = 'cancelled'
+      logAction = 'CANCELLED'
       data.status = 'cancelled'
+      data.stage = 'cancelled'
     }
 
     const updated = await prisma.$transaction(async (tx) => {
@@ -134,6 +223,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (result.count !== 1) {
         throw new DemandHttpError('Request was updated by someone else. Reload and try again.', 409)
       }
+
+      await tx.demandActivityLog.create({
+        data: {
+          requestId,
+          actorId: auth.user.userId,
+          actorName: auth.user.fullName,
+          actorRole: auth.user.role,
+          action: logAction,
+          fromStatus: existing.status,
+          toStatus: nextStatus,
+          notes: notes || (isOutOfStock ? 'Item is out of stock in inventory' : null),
+          outOfStock: isOutOfStock,
+        },
+      })
+
       return tx.demandRequest.findUniqueOrThrow({
         where: { requestId },
         include: demandInclude,
@@ -147,7 +251,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       changedBy: auth.user.userId,
       oldValues: { status: existing.status },
       newValues: { status: updated.status, notes: notes || undefined },
-      notes: `Demand request ${ACTION_LABELS[demandAction]}`,
+      notes: `Demand request ${logAction}`,
     })
 
     return noStoreJson({ request: serializeDemand(updated) })

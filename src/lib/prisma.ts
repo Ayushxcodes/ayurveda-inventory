@@ -31,6 +31,12 @@ pool.on('error', (err) => {
 
 const adapter = new PrismaPg(pool);
 
+// Invalidate stale in-memory cached client if schema has been updated
+if (globalThis.__ayurPrisma && !('demandActivityLog' in globalThis.__ayurPrisma)) {
+  console.log('[Prisma] Invalidate stale client to pick up updated Prisma schema.');
+  globalThis.__ayurPrisma = undefined;
+}
+
 export const prisma: PrismaClient =
   globalThis.__ayurPrisma ??
   new PrismaClient({

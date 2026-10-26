@@ -24,7 +24,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   requester: 'Dashboard counts plus demand requests; no inventory operations.',
 };
 
-export type AppTab = 'ALL' | 'CAPEX' | 'OPEX' | 'REG' | 'GRN' | 'ISS' | 'USERS' | 'DEMAND';
+export type AppTab = 'ALL' | 'CAPEX' | 'OPEX' | 'REG' | 'GRN' | 'ISS' | 'USERS' | 'DEMAND' | 'DEPT_ISSUES';
 
 export const TAB_ACCESS: Record<AppTab, readonly Role[]> = {
   ALL: ROLES,
@@ -35,6 +35,7 @@ export const TAB_ACCESS: Record<AppTab, readonly Role[]> = {
   ISS: ['super_admin', 'admin', 'hod'],
   USERS: ['super_admin'],
   DEMAND: ROLES,
+  DEPT_ISSUES: ROLES,
 };
 
 export function canAccessTab(role: Role, tab: AppTab): boolean {

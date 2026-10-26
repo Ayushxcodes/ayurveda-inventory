@@ -5,6 +5,9 @@ export const demandInclude = {
   department: { select: { deptCode: true, deptName: true } },
   requester: { select: { userId: true, fullName: true, username: true } },
   reviewer: { select: { fullName: true } },
+  hodApprover: { select: { fullName: true, role: true } },
+  adminApprover: { select: { fullName: true, role: true } },
+  rejecter: { select: { fullName: true, role: true } },
   fulfiller: { select: { fullName: true } },
   items: {
     orderBy: { demandItemId: 'asc' },
@@ -17,6 +20,10 @@ export const demandInclude = {
       item: { select: { itemCode: true, itemName: true, category: true } },
     },
   },
+  activityLogs: {
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  },
 } satisfies Prisma.DemandRequestInclude;
 
 export type DemandPayload = Prisma.DemandRequestGetPayload<{ include: typeof demandInclude }>;
@@ -24,18 +31,37 @@ export type DemandPayload = Prisma.DemandRequestGetPayload<{ include: typeof dem
 export function demandVisibilityWhere(user: SessionUser): Prisma.DemandRequestWhereInput | null {
   if (user.role === 'requester') return { requestedBy: user.userId };
   if (user.role === 'hod') return user.deptId ? { deptId: user.deptId } : null;
-  return {};
+  if (user.role === 'procurement_officer') return { status: { in: ['approved', 'fulfilled'] } };
+  if (user.role === 'admin' || user.role === 'super_admin') return {};
+  return { requestedBy: -1 };
 }
 
 export function serializeDemand(row: DemandPayload) {
   return {
     requestId: row.requestId,
     requestNumber: row.requestNumber,
+    deptId: row.deptId,
     status: row.status,
+    stage: row.stage,
     neededBy: row.neededBy ? row.neededBy.toISOString().slice(0, 10) : null,
     justification: row.justification,
     reviewNotes: row.reviewNotes,
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
+    hodApprovedBy: row.hodApprovedBy,
+    hodApprovedAt: row.hodApprovedAt?.toISOString() ?? null,
+    hodApproverName: row.hodApprover?.fullName ?? null,
+    hodNotes: row.hodNotes,
+    adminApprovedBy: row.adminApprovedBy,
+    adminApprovedAt: row.adminApprovedAt?.toISOString() ?? null,
+    adminApproverName: row.adminApprover?.fullName ?? null,
+    adminNotes: row.adminNotes,
+    rejectedBy: row.rejectedBy,
+    rejectedAt: row.rejectedAt?.toISOString() ?? null,
+    rejecterName: row.rejecter?.fullName ?? null,
+    rejecterRole: row.rejecter?.role ?? null,
+    rejectionStage: row.rejectionStage,
+    rejectionReason: row.rejectionReason,
+    outOfStock: row.outOfStock,
     fulfilledAt: row.fulfilledAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -52,6 +78,17 @@ export function serializeDemand(row: DemandPayload) {
       quantity: Number(line.quantity),
       unit: line.unit,
       notes: line.notes,
+    })),
+    activityLogs: (row.activityLogs || []).map((log) => ({
+      logId: log.logId,
+      actorName: log.actorName,
+      actorRole: log.actorRole,
+      action: log.action,
+      fromStatus: log.fromStatus,
+      toStatus: log.toStatus,
+      notes: log.notes,
+      outOfStock: log.outOfStock,
+      createdAt: log.createdAt.toISOString(),
     })),
   };
 }

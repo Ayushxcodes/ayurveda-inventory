@@ -49,6 +49,8 @@ enum UserRole {
 }
 
 enum DemandStatus {
+  pending_hod
+  pending_admin
   pending
   approved
   rejected
@@ -269,9 +271,13 @@ model User {
   disposals          DisposalLog[]
   reportTemplates    ReportTemplate[]
   sessions           Session[]
-  demandsRaised      DemandRequest[] @relation("DemandRequestedBy")
-  demandsReviewed    DemandRequest[] @relation("DemandReviewedBy")
-  demandsFulfilled   DemandRequest[] @relation("DemandFulfilledBy")
+  demandsRaised        DemandRequest[]     @relation("DemandRequestedBy")
+  demandsReviewed      DemandRequest[]     @relation("DemandReviewedBy")
+  demandsFulfilled     DemandRequest[]     @relation("DemandFulfilledBy")
+  demandsHodApproved   DemandRequest[]     @relation("DemandHodApprovedBy")
+  demandsAdminApproved DemandRequest[]     @relation("DemandAdminApprovedBy")
+  demandsRejected      DemandRequest[]     @relation("DemandRejectedBy")
+  demandActivityLogs   DemandActivityLog[]
 
   @@map("users")
 }
@@ -439,27 +445,65 @@ model DemandRequest {
   requestNumber String       @unique @map("request_number") @db.VarChar(30)
   deptId        Int          @map("dept_id")
   requestedBy   Int          @map("requested_by")
-  status        DemandStatus @default(pending)
-  neededBy      DateTime?    @map("needed_by") @db.Date
-  justification String?      @db.Text
-  reviewNotes   String?      @map("review_notes") @db.Text
-  reviewedBy    Int?         @map("reviewed_by")
-  reviewedAt    DateTime?    @map("reviewed_at")
-  fulfilledBy   Int?         @map("fulfilled_by")
-  fulfilledAt   DateTime?    @map("fulfilled_at")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  status          DemandStatus        @default(pending_hod)
+  stage           String              @default("hod") @db.VarChar(30)
+  neededBy        DateTime?           @map("needed_by") @db.Date
+  justification   String?             @db.Text
+  reviewNotes     String?             @map("review_notes") @db.Text
+  reviewedBy      Int?                @map("reviewed_by")
+  reviewedAt      DateTime?           @map("reviewed_at")
+  hodApprovedBy   Int?                @map("hod_approved_by")
+  hodApprovedAt   DateTime?           @map("hod_approved_at")
+  hodNotes        String?             @map("hod_notes") @db.Text
+  adminApprovedBy Int?                @map("admin_approved_by")
+  adminApprovedAt DateTime?           @map("admin_approved_at")
+  adminNotes      String?             @map("admin_notes") @db.Text
+  rejectedBy      Int?                @map("rejected_by")
+  rejectedAt      DateTime?           @map("rejected_at")
+  rejectionStage  String?             @map("rejection_stage") @db.VarChar(20)
+  rejectionReason String?             @map("rejection_reason") @db.Text
+  outOfStock      Boolean             @default(false) @map("out_of_stock")
+  fulfilledBy     Int?                @map("fulfilled_by")
+  fulfilledAt     DateTime?           @map("fulfilled_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
 
   // Relations
-  department Department          @relation(fields: [deptId], references: [deptId])
-  requester  User                @relation("DemandRequestedBy", fields: [requestedBy], references: [userId])
-  reviewer   User?               @relation("DemandReviewedBy", fields: [reviewedBy], references: [userId])
-  fulfiller  User?               @relation("DemandFulfilledBy", fields: [fulfilledBy], references: [userId])
-  items      DemandRequestItem[]
+  department    Department          @relation(fields: [deptId], references: [deptId])
+  requester     User                @relation("DemandRequestedBy", fields: [requestedBy], references: [userId])
+  reviewer      User?               @relation("DemandReviewedBy", fields: [reviewedBy], references: [userId])
+  hodApprover   User?               @relation("DemandHodApprovedBy", fields: [hodApprovedBy], references: [userId])
+  adminApprover User?               @relation("DemandAdminApprovedBy", fields: [adminApprovedBy], references: [userId])
+  rejecter      User?               @relation("DemandRejectedBy", fields: [rejectedBy], references: [userId])
+  fulfiller     User?               @relation("DemandFulfilledBy", fields: [fulfilledBy], references: [userId])
+  items         DemandRequestItem[]
+  activityLogs  DemandActivityLog[]
 
   @@index([deptId, status])
   @@index([requestedBy])
   @@map("demand_requests")
+}
+
+model DemandActivityLog {
+  logId      Int           @id @default(autoincrement()) @map("log_id")
+  requestId  Int           @map("request_id")
+  actorId    Int           @map("actor_id")
+  actorName  String        @map("actor_name") @db.VarChar(200)
+  actorRole  String        @map("actor_role") @db.VarChar(50)
+  action     String        @db.VarChar(50)
+  fromStatus String?       @map("from_status") @db.VarChar(50)
+  toStatus   String        @map("to_status") @db.VarChar(50)
+  notes      String?       @db.Text
+  outOfStock Boolean       @default(false) @map("out_of_stock")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  request DemandRequest @relation(fields: [requestId], references: [requestId], onDelete: Cascade)
+  actor   User          @relation(fields: [actorId], references: [userId], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([createdAt])
+  @@map("demand_activity_logs")
 }
 
 model DemandRequestItem {
