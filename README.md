@@ -1,6 +1,6 @@
 # AyurVaidya Inventory ERP
 
-Inventory management for the All India Institute of Ayurveda (AIIA), Faridabad campus. Tracks CAPEX assets, OPEX consumables, goods receipt (GRN), stock issues, AMC contracts, alerts, and role-based access.
+Inventory management for the All India Institute of Ayurveda (AIIA), Faridabad campus. Tracks CAPEX assets, OPEX consumables, goods receipt (GRN), stock issues, department demand requests, AMC contracts, alerts, and role-based access.
 
 ## Stack
 
@@ -13,13 +13,22 @@ Inventory management for the All India Institute of Ayurveda (AIIA), Faridabad c
 
 | Role | Code | Access |
 | --- | --- | --- |
-| Super Admin | `super_admin` | Everything, including user management |
-| Admin | `admin` | Operations: catalog, GRN, issues, reports — no user management |
-| Procurement Officer | `procurement_officer` | Catalog, GRN, QR codes, reports — no stock issue |
-| HOD | `hod` | Read-only catalog; dashboard, issue history, consumption and wastage limited to own department; authorises own department's issues; no GRN |
-| Requester | `requester` | Dashboard only (reserved for the future demand-request module) |
+| Super Admin | `super_admin` | Everything, including user management and demand oversight |
+| Admin | `admin` | Operations: catalog, GRN, issues, reports, demand review and fulfilment — no user management |
+| Procurement Officer | `procurement_officer` | Catalog, GRN, QR codes, reports, demand fulfilment — no stock issue |
+| HOD | `hod` | Read-only catalog; dashboard, issue history, consumption and wastage limited to own department; authorises own department's issues and reviews its demand requests; no GRN |
+| Requester | `requester` | Dashboard counts plus demand requests; no inventory operations |
 
 Only Super Admins can create, edit, deactivate, or reset passwords for accounts from **User Management** in the sidebar. Every account management action is written to the audit log.
+
+## Demand requests
+
+Users raise multi-line requests against the item catalog from **Demand Requests** in the sidebar. A request moves through `pending → approved → fulfilled`, or can be `rejected` / `cancelled`.
+
+- Requesters and HODs can raise requests; an assigned department is locked automatically, while an unassigned requester selects one.
+- HODs review requests for their own department and cannot review their own request. Admins and Super Admins can review any request.
+- Procurement Officers, Admins and Super Admins mark approved requests as fulfilled.
+- Requesters see only their own requests, HODs see their department, and procurement/admin roles see all. Every transition is audited.
 
 ## Prerequisites
 
@@ -93,7 +102,7 @@ Only Super Admins can create, edit, deactivate, or reset passwords for accounts 
 
 ## Auth notes
 
-- Sessions are random 32-byte tokens; only a SHA-256 hash is stored in `auth_sessions`.
+- Sessions are random 32-byte tokens; only a SHA-256 hash is stored in `sessions`.
 - Session cookie is `HttpOnly`, `SameSite=Lax`, `Secure` in production, with a 12-hour expiry.
 - Login is rate limited; failed attempts are audited.
 - Password resets and deactivation revoke all of the user's sessions.

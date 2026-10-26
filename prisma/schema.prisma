@@ -48,6 +48,14 @@ enum UserRole {
   requester
 }
 
+enum DemandStatus {
+  pending
+  approved
+  rejected
+  fulfilled
+  cancelled
+}
+
 enum ItemCategory {
   OPEX
   CAPEX
@@ -197,9 +205,10 @@ model Department {
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
   // Relations
-  users        User[]
-  items        Item[]
-  stockIssues  StockIssue[]
+  users          User[]
+  items          Item[]
+  stockIssues    StockIssue[]
+  demandRequests DemandRequest[]
 
   @@map("departments")
 }
@@ -260,6 +269,9 @@ model User {
   disposals          DisposalLog[]
   reportTemplates    ReportTemplate[]
   sessions           Session[]
+  demandsRaised      DemandRequest[] @relation("DemandRequestedBy")
+  demandsReviewed    DemandRequest[] @relation("DemandReviewedBy")
+  demandsFulfilled   DemandRequest[] @relation("DemandFulfilledBy")
 
   @@map("users")
 }
@@ -318,6 +330,7 @@ model Item {
   amcContracts      AmcContract[]
   alerts            Alert[]
   disposals         DisposalLog[]
+  demandRequestItems DemandRequestItem[]
 
   @@map("items")
 }
@@ -419,6 +432,51 @@ model StockIssue {
   issuer      User       @relation("IssuedBy", fields: [issuedBy], references: [userId])
 
   @@map("stock_issues")
+}
+
+model DemandRequest {
+  requestId     Int          @id @default(autoincrement()) @map("request_id")
+  requestNumber String       @unique @map("request_number") @db.VarChar(30)
+  deptId        Int          @map("dept_id")
+  requestedBy   Int          @map("requested_by")
+  status        DemandStatus @default(pending)
+  neededBy      DateTime?    @map("needed_by") @db.Date
+  justification String?      @db.Text
+  reviewNotes   String?      @map("review_notes") @db.Text
+  reviewedBy    Int?         @map("reviewed_by")
+  reviewedAt    DateTime?    @map("reviewed_at")
+  fulfilledBy   Int?         @map("fulfilled_by")
+  fulfilledAt   DateTime?    @map("fulfilled_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  department Department          @relation(fields: [deptId], references: [deptId])
+  requester  User                @relation("DemandRequestedBy", fields: [requestedBy], references: [userId])
+  reviewer   User?               @relation("DemandReviewedBy", fields: [reviewedBy], references: [userId])
+  fulfiller  User?               @relation("DemandFulfilledBy", fields: [fulfilledBy], references: [userId])
+  items      DemandRequestItem[]
+
+  @@index([deptId, status])
+  @@index([requestedBy])
+  @@map("demand_requests")
+}
+
+model DemandRequestItem {
+  demandItemId Int     @id @default(autoincrement()) @map("demand_item_id")
+  requestId    Int     @map("request_id")
+  itemId       Int     @map("item_id")
+  quantity     Decimal @db.Decimal(10, 3)
+  unit         String  @db.VarChar(20)
+  notes        String? @db.Text
+
+  // Relations
+  request DemandRequest @relation(fields: [requestId], references: [requestId], onDelete: Cascade)
+  item    Item          @relation(fields: [itemId], references: [itemId])
+
+  @@index([requestId])
+  @@index([itemId])
+  @@map("demand_request_items")
 }
 
 model AmcContract {

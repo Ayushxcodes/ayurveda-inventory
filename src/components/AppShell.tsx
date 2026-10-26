@@ -19,6 +19,7 @@ const RegistryDashboard = dynamic(() => import('./RegistryDashboard'), { ssr: fa
 const AyurVaidyaGRN = dynamic(() => import('./AyurVaidyaGRN'), { ssr: false });
 const AyurVaidyaStockIssue = dynamic(() => import('./AyurVaidyaStockIssue'), { ssr: false });
 const UsersDashboard = dynamic(() => import('./UsersDashboard'), { ssr: false });
+const DemandRequests = dynamic(() => import('./DemandRequests'), { ssr: false });
 
 const PAGE_TITLES: Record<AppTab, string> = {
   ALL: 'Dashboard',
@@ -28,6 +29,7 @@ const PAGE_TITLES: Record<AppTab, string> = {
   GRN: 'Stock Inward',
   ISS: 'Stock Issue',
   USERS: 'User Management',
+  DEMAND: 'Demand Requests',
 };
 
 const BREADCRUMBS: Record<AppTab, string> = {
@@ -38,6 +40,7 @@ const BREADCRUMBS: Record<AppTab, string> = {
   GRN: 'Stock Inward (GRN)',
   ISS: 'Stock Issue',
   USERS: 'User Management',
+  DEMAND: 'Demand Requests',
 };
 
 export default function AppShell({ user }: { user: SessionUser }) {
@@ -161,7 +164,7 @@ export default function AppShell({ user }: { user: SessionUser }) {
           </div>
         </header>
 
-        {activeTab !== 'GRN' && activeTab !== 'REG' && activeTab !== 'USERS' && (
+        {activeTab !== 'GRN' && activeTab !== 'REG' && activeTab !== 'USERS' && activeTab !== 'DEMAND' && (
           <div className="tab-bar">
             {activeTab === 'ISS' ? (
               <div className={`tab active`} style={{ flex: 1, textAlign: 'center' }}>
@@ -202,6 +205,8 @@ export default function AppShell({ user }: { user: SessionUser }) {
             <CapexDashboard />
           ) : activeTab === 'USERS' ? (
             <UsersDashboard user={user} />
+          ) : activeTab === 'DEMAND' ? (
+            <DemandRequests user={user} />
           ) : null}
         </div>
       </div>
