@@ -21,6 +21,8 @@ const AyurVaidyaStockIssue = dynamic(() => import('./AyurVaidyaStockIssue'), { s
 const UsersDashboard = dynamic(() => import('./UsersDashboard'), { ssr: false });
 const DemandRequests = dynamic(() => import('./DemandRequests'), { ssr: false });
 const DepartmentIssuesDashboard = dynamic(() => import('./DepartmentIssuesDashboard'), { ssr: false });
+const AiAnomalyDashboard = dynamic(() => import('./AiAnomalyDashboard'), { ssr: false });
+const AlertsDashboard = dynamic(() => import('./AlertsDashboard'), { ssr: false });
 
 const PAGE_TITLES: Record<AppTab, string> = {
   ALL: 'Dashboard',
@@ -32,6 +34,8 @@ const PAGE_TITLES: Record<AppTab, string> = {
   USERS: 'User Management',
   DEMAND: 'Demand Requests',
   DEPT_ISSUES: 'Department Issues & Holdings',
+  ANOMALY: 'AI Anomaly Detection & ML Insights',
+  ALERTS: 'Alerts & Role Notifications Center',
 };
 
 const BREADCRUMBS: Record<AppTab, string> = {
@@ -44,6 +48,8 @@ const BREADCRUMBS: Record<AppTab, string> = {
   USERS: 'User Management',
   DEMAND: 'Demand Requests',
   DEPT_ISSUES: 'Department Holdings',
+  ANOMALY: 'AI Anomaly ML',
+  ALERTS: 'Alerts & Notifications',
 };
 
 export default function AppShell({ user }: { user: SessionUser }) {
@@ -217,6 +223,10 @@ export default function AppShell({ user }: { user: SessionUser }) {
             <DemandRequests user={user} />
           ) : activeTab === 'DEPT_ISSUES' ? (
             <DepartmentIssuesDashboard user={user} />
+          ) : activeTab === 'ANOMALY' ? (
+            <AiAnomalyDashboard user={user} />
+          ) : activeTab === 'ALERTS' ? (
+            <AlertsDashboard user={user} />
           ) : null}
         </div>
       </div>

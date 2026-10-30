@@ -211,6 +211,7 @@ model Department {
   items          Item[]
   stockIssues    StockIssue[]
   demandRequests DemandRequest[]
+  roleNotifications RoleNotification[]
 
   @@map("departments")
 }
@@ -278,6 +279,7 @@ model User {
   demandsAdminApproved DemandRequest[]     @relation("DemandAdminApprovedBy")
   demandsRejected      DemandRequest[]     @relation("DemandRejectedBy")
   demandActivityLogs   DemandActivityLog[]
+  roleNotifications    RoleNotification[]
 
   @@map("users")
 }
@@ -648,4 +650,27 @@ model ReportTemplate {
   creator User @relation(fields: [createdBy], references: [userId])
 
   @@map("report_templates")
+}
+
+model RoleNotification {
+  id           Int         @id @default(autoincrement())
+  title        String      @db.VarChar(255)
+  message      String      @db.Text
+  severity     String      @default("info") @db.VarChar(20)
+  targetRole   String      @default("all") @map("target_role") @db.VarChar(50)
+  targetDeptId Int?        @map("target_dept_id")
+  createdBy    Int         @map("created_by")
+  senderRole   String      @map("sender_role") @db.VarChar(50)
+  senderName   String      @map("sender_name") @db.VarChar(100)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  isPinned     Boolean     @default(false) @map("is_pinned")
+  status       String      @default("active") @db.VarChar(20)
+
+  // Relations
+  targetDept   Department? @relation(fields: [targetDeptId], references: [deptId])
+  creator      User        @relation(fields: [createdBy], references: [userId], onDelete: Cascade)
+
+  @@index([targetRole, targetDeptId])
+  @@index([createdAt(sort: Desc)])
+  @@map("role_notifications")
 }

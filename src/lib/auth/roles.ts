@@ -24,7 +24,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   requester: 'Dashboard counts plus demand requests; no inventory operations.',
 };
 
-export type AppTab = 'ALL' | 'CAPEX' | 'OPEX' | 'REG' | 'GRN' | 'ISS' | 'USERS' | 'DEMAND' | 'DEPT_ISSUES';
+export type AppTab = 'ALL' | 'CAPEX' | 'OPEX' | 'REG' | 'GRN' | 'ISS' | 'USERS' | 'DEMAND' | 'DEPT_ISSUES' | 'ANOMALY' | 'ALERTS';
 
 export const TAB_ACCESS: Record<AppTab, readonly Role[]> = {
   ALL: ROLES,
@@ -36,6 +36,8 @@ export const TAB_ACCESS: Record<AppTab, readonly Role[]> = {
   USERS: ['super_admin'],
   DEMAND: ROLES,
   DEPT_ISSUES: ROLES,
+  ANOMALY: ['super_admin', 'admin', 'procurement_officer', 'hod'],
+  ALERTS: ROLES,
 };
 
 export function canAccessTab(role: Role, tab: AppTab): boolean {
@@ -64,6 +66,13 @@ export const ISSUE_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod'];
 export const REPORT_ROLES: readonly Role[] = ['super_admin', 'admin', 'procurement_officer', 'hod'];
 export const USER_ADMIN_ROLES: readonly Role[] = ['super_admin'];
 export const DEPARTMENT_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod'];
+export const ANOMALY_ROLES: readonly Role[] = ['super_admin', 'admin', 'procurement_officer', 'hod'];
+export const ALERT_ROLES: readonly Role[] = ROLES;
+export const ALERT_SENDER_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod'];
+
+export function canSendAlerts(role: Role): boolean {
+  return ALERT_SENDER_ROLES.includes(role);
+}
 
 export const DEMAND_ROLES: readonly Role[] = ROLES;
 export const DEMAND_CREATE_ROLES: readonly Role[] = ['super_admin', 'admin', 'hod', 'requester'];

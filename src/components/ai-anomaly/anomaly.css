@@ -1,0 +1,605 @@
+/* ─────────────────────────────────────────────────────────────
+   AyurVaidya — AI Anomaly ML Detection Dashboard Styles
+   Machine Learning Premature Re-dispatch & Consumption Analysis
+   ───────────────────────────────────────────────────────────── */
+
+.anom-page {
+  padding: 24px 28px;
+  max-width: 1540px;
+  margin: 0 auto;
+  color: var(--text, #1e293b);
+}
+
+.anom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.anom-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.anom-title-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(99, 102, 241, 0.08));
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a855f7;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);
+}
+
+.anom-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--text-primary, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.anom-ai-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(168, 85, 247, 0.25);
+}
+
+.anom-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+  margin-top: 4px;
+}
+
+.anom-engine-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9333ea;
+}
+
+.anom-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7);
+  animation: anomPulse 1.8s infinite;
+}
+
+@keyframes anomPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(168, 85, 247, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0);
+  }
+}
+
+/* ── KPI Grid ─────────────────────────────────────────────── */
+.anom-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.anom-kpi-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.anom-kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.anom-kpi-card.kpi-crit::before {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.anom-kpi-card.kpi-premature::before {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.anom-kpi-card.kpi-total::before {
+  background: linear-gradient(90deg, #a855f7, #6366f1);
+}
+
+.anom-kpi-card.kpi-depts::before {
+  background: linear-gradient(90deg, #059669, #10b981);
+}
+
+.anom-kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #64748b);
+}
+
+.anom-kpi-val {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary, #0f172a);
+}
+
+.anom-kpi-sub {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+/* ── Filter Toolbar ───────────────────────────────────────── */
+.anom-toolbar {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.anom-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.anom-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.anom-select-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+  white-space: nowrap;
+}
+
+.anom-select {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: var(--surface, #ffffff);
+  color: var(--text-primary, #0f172a);
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 200px;
+  outline: none;
+  cursor: pointer;
+}
+
+.anom-chips {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.anom-chip {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: transparent;
+  color: var(--text-secondary, #475569);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.anom-chip.active {
+  background: #9333ea;
+  color: #ffffff;
+  border-color: #9333ea;
+  box-shadow: 0 2px 4px rgba(147, 51, 234, 0.25);
+}
+
+.anom-search-wrap {
+  position: relative;
+  min-width: 240px;
+  flex: 1;
+  max-width: 360px;
+}
+
+.anom-search-input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: var(--surface, #ffffff);
+  color: var(--text-primary, #0f172a);
+  font-size: 13px;
+  outline: none;
+}
+
+.anom-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted, #94a3b8);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+/* ── Anomaly Card List ────────────────────────────────────── */
+.anom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.anom-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.anom-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+}
+
+.anom-card.crit {
+  border-left: 5px solid #ef4444;
+}
+
+.anom-card.high {
+  border-left: 5px solid #f59e0b;
+}
+
+.anom-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.anom-item-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.anom-item-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.anom-item-code {
+  font-size: 12px;
+  font-family: var(--mono, monospace);
+  color: var(--text-muted, #64748b);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.anom-category-pill {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.anom-category-pill.capex {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.anom-category-pill.opex {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.anom-dept-pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.anom-sev-badge {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 4px 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.anom-sev-badge.crit {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.anom-sev-badge.high {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* ── Timeline Comparison Box ─────────────────────────────── */
+.anom-timeline-comparison {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1.2fr;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface-secondary, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+@media (max-width: 900px) {
+  .anom-timeline-comparison {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.anom-event-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.anom-event-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #64748b);
+  letter-spacing: 0.05em;
+}
+
+.anom-event-qty {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+}
+
+.anom-event-meta {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+.anom-arrow-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-muted, #94a3b8);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.anom-arrow-label {
+  font-size: 11px;
+  color: #dc2626;
+  font-weight: 800;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-top: 2px;
+}
+
+.anom-gap-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-color, #cbd5e1);
+}
+
+.anom-metric-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  gap: 12px;
+}
+
+.anom-metric-lbl {
+  color: var(--text-secondary, #64748b);
+}
+
+.anom-metric-val {
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.anom-metric-val.premature {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+/* ── AI Forensic Analysis Box ────────────────────────────── */
+.anom-analysis-box {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), rgba(99, 102, 241, 0.03));
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  gap: 14px;
+}
+
+.anom-brain-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.anom-analysis-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.anom-analysis-heading {
+  font-size: 13px;
+  font-weight: 800;
+  color: #7e22ce;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.anom-confidence-badge {
+  font-size: 11px;
+  background: rgba(126, 34, 206, 0.12);
+  color: #7e22ce;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.anom-analysis-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-primary, #1e293b);
+}
+
+.anom-rec-box {
+  margin-top: 4px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  border-left: 3px solid #059669;
+  font-size: 12px;
+  color: #065f46;
+  font-weight: 500;
+}
+
+/* ── Card Actions ─────────────────────────────────────────── */
+.anom-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color, #f1f5f9);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.anom-detected-time {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.anom-action-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.anom-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.anom-btn-ack {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.anom-btn-ack:hover {
+  background: #e2e8f0;
+}
+
+.anom-btn-flag {
+  background: linear-gradient(135deg, #a855f7, #9333ea);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(168, 85, 247, 0.25);
+}
+
+.anom-btn-flag:hover {
+  background: #7e22ce;
+}
+
+/* ── Empty State ─────────────────────────────────────────── */
+.anom-empty {
+  text-align: center;
+  padding: 60px 24px;
+  background: var(--surface, #ffffff);
+  border: 1px dashed var(--border-color, #cbd5e1);
+  border-radius: 16px;
+  color: var(--text-secondary, #64748b);
+}
+
+.anom-empty-icon {
+  font-size: 44px;
+  margin-bottom: 12px;
+}
+

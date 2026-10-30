@@ -33,7 +33,9 @@ export default function Sidebar({
       activeTab !== "OPEX" &&
       activeTab !== "USERS" &&
       activeTab !== "DEMAND" &&
-      activeTab !== "DEPT_ISSUES");
+      activeTab !== "DEPT_ISSUES" &&
+      activeTab !== "ANOMALY" &&
+      activeTab !== "ALERTS");
 
   const canOpenRegistry = canAccessTab(user.role, "REG");
   const canOpenCapex = canAccessTab(user.role, "CAPEX");
@@ -43,7 +45,9 @@ export default function Sidebar({
   const canOpenUsers = canAccessTab(user.role, "USERS");
   const canOpenDemand = canAccessTab(user.role, "DEMAND");
   const canOpenDeptIssues = canAccessTab(user.role, "DEPT_ISSUES");
-  const showInsights = canOpenRegistry || canOpenCapex || canOpenOpex;
+  const canOpenAnomaly = canAccessTab(user.role, "ANOMALY");
+  const canOpenAlerts = canAccessTab(user.role, "ALERTS");
+  const showInsights = canOpenRegistry || canOpenCapex || canOpenOpex || canOpenAnomaly || canOpenAlerts;
   const showCategories = canOpenCapex || canOpenOpex || canOpenDeptIssues;
 
   return (
@@ -280,27 +284,17 @@ export default function Sidebar({
               <div className="nav-label">Insights &amp; Audits</div>
 
               {/* Alerts */}
-              {canOpenRegistry && (
+              {canOpenAlerts && (
                 <div
-                  className="nav-item"
+                  className={`nav-item ${activeTab === "ALERTS" ? "active" : ""}`}
                   onClick={() => {
-                    try {
-                      sessionStorage.setItem(
-                        "registryDeepLink",
-                        JSON.stringify({
-                          status: "critical",
-                          bannerMsg: "← All critical and expiring inventory alerts",
-                        })
-                      );
-                      window.dispatchEvent(new CustomEvent("open-registry"));
-                    } catch {}
-                    setActiveTab("REG");
+                    setActiveTab("ALERTS");
                     if (onCloseMobile) onCloseMobile();
                   }}
                   role="button"
                   tabIndex={0}
                 >
-                  <div className="nav-icon">
+                  <div className="nav-icon" style={{ color: "#ef4444" }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                       <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
                       <path d="M13.73 21a2 2 0 01-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
@@ -330,12 +324,12 @@ export default function Sidebar({
                 </div>
               )}
 
-              {/* AI Assistant */}
-              {canOpenOpex && (
+              {/* AI Anomaly ML */}
+              {canOpenAnomaly && (
                 <div
-                  className="nav-item"
+                  className={`nav-item ${activeTab === "ANOMALY" ? "active" : ""}`}
                   onClick={() => {
-                    setActiveTab("OPEX");
+                    setActiveTab("ANOMALY");
                     if (onCloseMobile) onCloseMobile();
                   }}
                   role="button"
